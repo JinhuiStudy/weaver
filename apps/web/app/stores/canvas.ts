@@ -13,6 +13,7 @@ import { create } from "zustand";
 // Web Crypto's randomUUID is available in Workers, modern browsers, and Node 19+.
 // Keeps this module runtime-agnostic (no `node:crypto` import).
 const genId = () => crypto.randomUUID();
+
 import type { WvFlowNodeData } from "~/components/canvas/nodes";
 
 export type NodeKind = "input" | "agent" | "tool" | "branch" | "output";

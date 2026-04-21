@@ -1,12 +1,12 @@
 import type { Edge } from "@xyflow/react";
-import { ArrowLeft, Play, Save, Sparkles } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowLeft, Check, Loader2, Play, Save, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
 import { Badge, Button, Kbd } from "~/components/ui";
-import { type CanvasNode, useCanvas } from "~/stores/canvas";
+import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
+import type { CanvasNode } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -99,16 +99,11 @@ const demoEdges: Edge[] = [
 ];
 
 export default function BuilderRoute({ params }: Route.ComponentProps) {
-  const hydrate = useCanvas((s) => s.hydrate);
-  const currentToolId = useCanvas((s) => s.toolId);
-
-  useEffect(() => {
-    // Seed the store on first visit (or when switching tools). Week-1 D: this
-    // will be replaced by Yjs+IndexedDB hydration.
-    if (currentToolId !== params.id) {
-      hydrate(params.id, demoNodes, demoEdges);
-    }
-  }, [params.id, currentToolId, hydrate]);
+  const status = useCanvasPersistence({
+    toolId: params.id,
+    seedNodes: demoNodes,
+    seedEdges: demoEdges,
+  });
 
   return (
     <div className="flex h-screen flex-col bg-bg-base text-text-primary">
@@ -123,6 +118,7 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             </span>
             <span className="text-sm font-semibold tracking-tight">{params.id}</span>
             <Badge tone="muted">v0 · draft</Badge>
+            <SyncBadge status={status} />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -150,4 +146,24 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
       </div>
     </div>
   );
+}
+
+function SyncBadge({ status }: { status: "idle" | "loading" | "ready" }) {
+  if (status === "ready") {
+    return (
+      <Badge tone="ok" className="flex items-center gap-1">
+        <Check className="h-3 w-3" />
+        saved
+      </Badge>
+    );
+  }
+  if (status === "loading") {
+    return (
+      <Badge tone="running" pulse>
+        <Loader2 className="h-3 w-3 animate-spin" />
+        syncing
+      </Badge>
+    );
+  }
+  return <Badge tone="muted">offline</Badge>;
 }

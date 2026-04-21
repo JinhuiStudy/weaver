@@ -21,6 +21,8 @@
     "tailwind-merge": "^2.5.4",
     "ulid": "^2.3.0",
     "valibot": "^0.42.1",
+    "y-indexeddb": "^9.0.12",
+    "yjs": "^13.6.30",
     "zustand": "^5"
   },
   "devDependencies": {
