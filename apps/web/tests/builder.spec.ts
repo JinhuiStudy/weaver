@@ -132,9 +132,9 @@ test("branch outputs add/remove reflect on canvas immediately (+ cascade edges)"
   await page.waitForTimeout(200);
   await expect(branchHandles).toHaveCount(2);
   await expect(allEdges).toHaveCount(baselineEdgeCount - 1);
-  await expect(
-    page.locator(".react-flow__edge-textwrapper", { hasText: "escalate" }),
-  ).toHaveCount(0);
+  await expect(page.locator(".react-flow__edge-textwrapper", { hasText: "escalate" })).toHaveCount(
+    0,
+  );
   await page.screenshot({
     path: "tests/screenshots/32-branch-after-remove.png",
     fullPage: false,
