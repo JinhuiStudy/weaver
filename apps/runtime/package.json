@@ -1,0 +1,24 @@
+{
+  "name": "@weaver/runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@weaver/core": "workspace:*",
+    "hono": "^4.6.0",
+    "valibot": "^0.42.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250115.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.5",
+    "wrangler": "^4.75.0"
+  }
+}
