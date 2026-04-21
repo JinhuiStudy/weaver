@@ -141,6 +141,62 @@ test("branch outputs add/remove reflect on canvas immediately (+ cascade edges)"
   });
 });
 
+test("Delete key removes selected node + cascades its edges", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const allNodes = page.locator(".wv-node");
+  const allEdges = page.locator(".react-flow__edge");
+  const baselineNodes = await allNodes.count();
+  const baselineEdges = await allEdges.count();
+
+  // Select the tool (stripe_lookup) — it sits between input and branch,
+  // so deleting it should drop 2 edges (in→tool and tool→branch).
+  const tool = page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" });
+  await tool.click();
+  await page.waitForTimeout(150);
+
+  await page.screenshot({
+    path: "tests/screenshots/50-before-delete.png",
+    fullPage: false,
+  });
+
+  // Press Delete (macOS uses Backspace; xyflow listens to both by default).
+  await page.keyboard.press("Delete");
+  await page.waitForTimeout(200);
+
+  await expect(allNodes).toHaveCount(baselineNodes - 1);
+  await expect(page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" })).toHaveCount(0);
+  // stripe_lookup was source/target of 2 edges in the seed.
+  await expect(allEdges).toHaveCount(baselineEdges - 2);
+
+  await page.screenshot({
+    path: "tests/screenshots/51-after-delete.png",
+    fullPage: false,
+  });
+});
+
+test("Backspace also deletes the selected node (macOS-style)", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const branch = page.locator(".wv-node.n-branch").first();
+  await branch.click();
+  await page.waitForTimeout(150);
+
+  const allNodes = page.locator(".wv-node");
+  const before = await allNodes.count();
+
+  await page.keyboard.press("Backspace");
+  await page.waitForTimeout(200);
+
+  await expect(allNodes).toHaveCount(before - 1);
+  await page.screenshot({
+    path: "tests/screenshots/52-after-backspace.png",
+    fullPage: false,
+  });
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

@@ -88,6 +88,7 @@ function NodeCanvasInner() {
         fitViewOptions={{ padding: 0.2 }}
         proOptions={{ hideAttribution: true }}
         colorMode="dark"
+        deleteKeyCode={["Backspace", "Delete"]}
       >
         <Background
           variant={BackgroundVariant.Dots}
