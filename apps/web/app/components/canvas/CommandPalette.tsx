@@ -54,8 +54,8 @@ function addNodeCommand(kind: NodeKind): Command {
     ),
     keywords: ["add", "node", kind, label.toLowerCase(), "create"],
     run: () => {
-      // Drop the new node near the center of the visible viewport.
-      useCanvas.getState().addNode(kind, { x: 200, y: 120 });
+      // Store picks a non-overlapping spot when `position` is omitted.
+      useCanvas.getState().addNode(kind);
     },
   };
 }
@@ -168,9 +168,14 @@ export function CommandPalette({
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return allCommands;
-    return allCommands.filter((c) =>
-      [c.label.toLowerCase(), ...c.keywords].some((k) => k.includes(q)),
-    );
+    // Tokenize so "add an agent node" matches a command whose keywords
+    // collectively cover {add, agent, node} — "an" is ignored as a
+    // stop-like filler by virtue of not appearing as any keyword.
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return allCommands.filter((c) => {
+      const hay = [c.label.toLowerCase(), ...c.keywords].join(" ");
+      return tokens.every((t) => hay.includes(t));
+    });
   }, [allCommands, query]);
 
   // Keep active index inside bounds when the filter narrows the list.

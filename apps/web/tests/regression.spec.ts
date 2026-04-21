@@ -52,6 +52,55 @@ test("undo to empty history is a no-op (no crash)", async ({ page }) => {
   await expect(page.locator(".wv-node")).toHaveCount(before);
 });
 
+test("palette · Add agent twice places the two new nodes without overlap", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  async function addViaPalette(term: string) {
+    await page.keyboard.press("Meta+k");
+    await page
+      .locator('[role="dialog"][aria-label="Command palette"] input')
+      .waitFor({ state: "visible" });
+    await page.locator('[role="dialog"][aria-label="Command palette"] input').fill(term);
+    await page.locator('[role="dialog"][aria-label="Command palette"] input').press("Enter");
+    await page.waitForTimeout(200);
+  }
+
+  await addViaPalette("add agent node");
+  await addViaPalette("add agent node");
+
+  // Count agents via the store (authoritative) to sidestep xyflow viewport
+  // clipping.
+  const agentCount = await page.evaluate(() => {
+    const s = (window as unknown as { __canvas?: { getState: () => unknown } }).__canvas;
+    if (!s) return -1;
+    const state = s.getState() as {
+      nodes: { type?: string; data?: { label?: string } }[];
+    };
+    return state.nodes.filter((n) => n.type === "agent" && n.data?.label === "new_agent").length;
+  });
+  expect(agentCount).toBe(2);
+
+  // Get positions from the store too — DOM bounding boxes may be clipped.
+  const positions = await page.evaluate(() => {
+    const s = (window as unknown as { __canvas: { getState: () => unknown } }).__canvas;
+    const state = s.getState() as {
+      nodes: { type?: string; data?: { label?: string }; position: { x: number; y: number } }[];
+    };
+    return state.nodes
+      .filter((n) => n.type === "agent" && n.data?.label === "new_agent")
+      .map((n) => n.position);
+  });
+  expect(positions).toHaveLength(2);
+  const [p1, p2] = positions;
+  if (!p1 || !p2) throw new Error("expected two positions");
+
+  const NODE_W = 240;
+  const NODE_H = 120;
+  const overlap = Math.abs(p1.x - p2.x) < NODE_W && Math.abs(p1.y - p2.y) < NODE_H;
+  expect(overlap).toBe(false);
+});
+
 test("palette jump-to-node highlights it in the inspector", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

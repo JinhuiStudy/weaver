@@ -19,12 +19,7 @@ describe("canvasToGraph · stress", () => {
   it("handles 500 nodes + 499 edges in under 100 ms", () => {
     const nodes = Array.from({ length: 500 }, (_, i) => ({
       id: `n${i}`,
-      type:
-        i === 0
-          ? ("input" as const)
-          : i === 499
-            ? ("output" as const)
-            : ("agent" as const),
+      type: i === 0 ? ("input" as const) : i === 499 ? ("output" as const) : ("agent" as const),
       position: { x: i * 20, y: 0 },
       data: { label: `n${i}` },
     }));

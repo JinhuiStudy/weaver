@@ -44,7 +44,11 @@ export interface CanvasStore {
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (conn: Connection) => void;
 
-  addNode: (kind: NodeKind, position: { x: number; y: number }) => CanvasNode;
+  /**
+   * Add a node. If `position` is omitted, the store picks a non-overlapping
+   * spot near the viewport anchor — used by the palette / Compose flows.
+   */
+  addNode: (kind: NodeKind, position?: { x: number; y: number }) => CanvasNode;
   updateNodeData: (id: string, patch: Partial<WvFlowNodeData>) => void;
   removeNode: (id: string) => void;
 
@@ -111,14 +115,32 @@ export const useCanvas = create<CanvasStore>((set, get) => {
    * Call BEFORE a semantic mutation. Not called on xyflow drag/position
    * updates — that would spam history with every frame of a drag.
    */
-  const pushHistory = (reason: string): void => {
+  const pushHistory = (): void => {
     const snap = snapshotOf(get());
     const next = [...get().history, snap].slice(-HISTORY_LIMIT);
     set({ history: next, future: [] });
-    if (typeof window !== "undefined" && import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.log("[canvas] pushHistory", reason, "→ len", next.length);
+  };
+
+  /**
+   * Pick a non-overlapping spot for a newly-added node. Used when the palette
+   * or Compose-with-AI adds a node without a user-picked drop position. We
+   * approximate every node's bounding box as `NODE_W × NODE_H` (a tad larger
+   * than the real 200×~80 to leave breathing room) and step diagonally off the
+   * base anchor until nothing collides.
+   */
+  const NODE_W = 240;
+  const NODE_H = 120;
+  const placeWithoutOverlap = (existing: CanvasNode[]): { x: number; y: number } => {
+    const base = { x: 200, y: 120 };
+    const step = { dx: 40, dy: 40 };
+    for (let i = 0; i < 50; i++) {
+      const pos = { x: base.x + step.dx * i, y: base.y + step.dy * i };
+      const collides = existing.some(
+        (n) => Math.abs(n.position.x - pos.x) < NODE_W && Math.abs(n.position.y - pos.y) < NODE_H,
+      );
+      if (!collides) return pos;
     }
+    return { x: base.x + step.dx * 50, y: base.y + step.dy * 50 };
   };
 
   // Tracks whether we're currently mid-drag so drag-end (`dragging === false`)
@@ -168,27 +190,27 @@ export const useCanvas = create<CanvasStore>((set, get) => {
           else if (c.dragging === false) wasDragging = false;
         }
       }
-      if (shouldRecord) pushHistory(`onNodesChange:${changes.map((c) => c.type).join(",")}`);
+      if (shouldRecord) pushHistory();
       set({ nodes: applyNodeChanges(changes, get().nodes) as CanvasNode[] });
     },
 
     onEdgesChange: (changes) => {
       const shouldRecord = changes.some((c) => c.type === "remove");
-      if (shouldRecord) pushHistory(`onNodesChange:${changes.map((c) => c.type).join(",")}`);
+      if (shouldRecord) pushHistory();
       set({ edges: applyEdgeChanges(changes, get().edges) });
     },
 
     onConnect: (conn) => {
-      pushHistory("onConnect");
+      pushHistory();
       set({ edges: addEdge({ ...conn, id: `e-${genId()}` }, get().edges) });
     },
 
     addNode: (kind, position) => {
-      pushHistory("addNode");
+      pushHistory();
       const node: CanvasNode = {
         id: genId(),
         type: kind,
-        position,
+        position: position ?? placeWithoutOverlap(get().nodes),
         data: { ...DEFAULT_DATA_FOR_KIND[kind] },
       };
       set({ nodes: [...get().nodes, node], selectedId: node.id });
@@ -196,14 +218,14 @@ export const useCanvas = create<CanvasStore>((set, get) => {
     },
 
     updateNodeData: (id, patch) => {
-      pushHistory("updateNodeData");
+      pushHistory();
       set({
         nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n)),
       });
     },
 
     removeNode: (id) => {
-      pushHistory("removeNode");
+      pushHistory();
       set({
         nodes: get().nodes.filter((n) => n.id !== id),
         edges: get().edges.filter((e) => e.source !== id && e.target !== id),
@@ -212,7 +234,7 @@ export const useCanvas = create<CanvasStore>((set, get) => {
     },
 
     addBranchOutput: (nodeId, outputId) => {
-      pushHistory("addBranchOutput");
+      pushHistory();
       set({
         nodes: get().nodes.map((n) => {
           if (n.id !== nodeId || n.type !== "branch") return n;
@@ -224,7 +246,7 @@ export const useCanvas = create<CanvasStore>((set, get) => {
     },
 
     removeBranchOutput: (nodeId, outputId) => {
-      pushHistory("removeBranchOutput");
+      pushHistory();
       set({
         nodes: get().nodes.map((n) => {
           if (n.id !== nodeId || n.type !== "branch") return n;
