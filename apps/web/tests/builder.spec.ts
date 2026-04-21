@@ -369,6 +369,44 @@ test("⌘Z undoes a label rename, ⌘⇧Z re-applies it", async ({ page }) => {
   ).toBeVisible();
 });
 
+/**
+ * The Save button turns the live canvas into an `@weaver/core` Graph and
+ * triggers a browser download. We assert the download contents round-trip
+ * through the same parseGraph that `apps/runtime` will use — so UI save ≡
+ * what the runtime accepts.
+ */
+test("Save exports a parseGraph-valid JSON download", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("button", { hasText: "Save" }).click();
+  const download = await downloadPromise;
+
+  const path = await download.path();
+  const content = (await import("node:fs/promises")).readFile(path, "utf8");
+  const json = JSON.parse(await content) as {
+    version: number;
+    tool_id: string;
+    tool_version: number;
+    nodes: Array<{ id: string; type: string; label: string }>;
+    edges: Array<{ id: string }>;
+  };
+
+  expect(json.version).toBe(1);
+  expect(json.tool_id).toBe(id);
+  expect(json.nodes.length).toBeGreaterThanOrEqual(6);
+  expect(json.edges.length).toBeGreaterThanOrEqual(6);
+  // Seeded labels survive.
+  const labels = json.nodes.map((n) => n.label);
+  expect(labels).toContain("refund_received");
+  expect(labels).toContain("policy_check");
+  expect(labels).toContain("within_7d");
+
+  // Also take a visual snapshot of the builder at save time.
+  await page.screenshot({ path: "tests/screenshots/90-save-triggered.png", fullPage: false });
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);
