@@ -524,6 +524,53 @@ test("⌘S inside a label input does NOT trigger the export", async ({ page }) =
   expect(outcome).toBe("timeout");
 });
 
+test("⌘K opens the command palette; filter + Enter runs a command", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const baselineAgents = await page.locator(".wv-node.n-agent").count();
+
+  // Focus off the inspector.
+  await page.locator(".react-flow__pane").click({ position: { x: 40, y: 40 } });
+  await page.waitForTimeout(50);
+
+  // Palette dialog should NOT be visible yet.
+  await expect(page.locator('[role="dialog"][aria-label="Command palette"]')).toHaveCount(0);
+
+  await page.keyboard.press("Meta+k");
+  await page.waitForTimeout(100);
+
+  const dialog = page.locator('[role="dialog"][aria-label="Command palette"]');
+  await expect(dialog).toBeVisible();
+  await page.screenshot({ path: "tests/screenshots/92-palette-open.png", fullPage: false });
+
+  // Typing narrows the list; "agent" should match "Add agent node".
+  const input = dialog.locator("input");
+  await input.fill("agent");
+  await input.press("Enter");
+  await page.waitForTimeout(150);
+
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".wv-node.n-agent")).toHaveCount(baselineAgents + 1);
+  await page.screenshot({ path: "tests/screenshots/93-palette-added-agent.png", fullPage: false });
+});
+
+test("Escape closes the command palette without running a command", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+  const baselineNodes = await page.locator(".wv-node").count();
+
+  await page.keyboard.press("Meta+k");
+  await page.waitForTimeout(50);
+  const dialog = page.locator('[role="dialog"][aria-label="Command palette"]');
+  await expect(dialog).toBeVisible();
+
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(50);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator(".wv-node")).toHaveCount(baselineNodes);
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

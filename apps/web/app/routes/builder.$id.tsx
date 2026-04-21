@@ -10,8 +10,9 @@ import {
   Undo2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { CommandPalette } from "~/components/canvas/CommandPalette";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
@@ -154,9 +155,13 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     [params.id],
   );
 
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
   // Global keyboard shortcuts. All of them skip when the focus is inside a
   // text-entry element so we don't hijack the browser's native text editing
-  // (e.g. ⌘Z inside an <input>, ⌘S → native save-page dialog).
+  // (e.g. ⌘Z inside an <input>, ⌘S → native save-page dialog). ⌘K is the one
+  // exception: it intentionally opens the palette even over an input so the
+  // composer is always one shortcut away.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
@@ -166,6 +171,11 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
       const inTextField = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
       const key = e.key.toLowerCase();
 
+      if (key === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+        return;
+      }
       if (key === "z") {
         if (inTextField) return;
         e.preventDefault();
@@ -224,7 +234,12 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             <Redo2 className="lu" />
           </Button>
           <span className="h-4 w-px bg-border" aria-hidden />
-          <Button variant="ghost" size="sm" leftIcon={<Sparkles className="lu" />}>
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Sparkles className="lu" />}
+            onClick={() => setPaletteOpen(true)}
+          >
             Compose
             <Kbd className="ml-1">⌘K</Kbd>
           </Button>
@@ -261,6 +276,12 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         </main>
         <Inspector />
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        ctx={{ onSave, onImport: onImportClick }}
+      />
     </div>
   );
 }
