@@ -6,5 +6,12 @@
   "compatibility_flags": ["nodejs_compat"],
   "ai": {
     "binding": "AI"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "weaver-db",
+      "database_id": "a07b1744-70c6-4e5c-9934-41ac804a24cc"
+    }
+  ]
 }
