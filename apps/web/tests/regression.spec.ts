@@ -251,6 +251,66 @@ test("Undo / Redo header buttons show their text label (not icon-only)", async (
   });
 });
 
+/* ── F21: Inspector Agent-specific fields ──────────────────────── */
+
+test("Inspector · Agent 선택 시 model · system_prompt · user_prompt · temperature 편집 가능", async ({
+  page,
+}) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const agent = page.locator(".wv-node.n-agent").first();
+  await agent.click();
+  await page.waitForTimeout(100);
+
+  // Agent-specific fields only visible on agent selection.
+  const modelSelect = page.locator('select[aria-label="Agent model"]');
+  const systemPrompt = page.locator('textarea[aria-label="System prompt"]');
+  const userPrompt = page.locator('textarea[aria-label="User prompt"]');
+  const tempSlider = page.locator('input[aria-label="Temperature"]');
+
+  await expect(modelSelect).toBeVisible();
+  await expect(systemPrompt).toBeVisible();
+  await expect(userPrompt).toBeVisible();
+  await expect(tempSlider).toBeVisible();
+
+  // Edit + blur → store picks up the change.
+  await modelSelect.selectOption("claude-sonnet-4-6");
+  await systemPrompt.fill("You are a refund-policy checker.");
+  await systemPrompt.blur();
+  await userPrompt.fill("Check {{ input.order_id }}");
+  await userPrompt.blur();
+  await tempSlider.fill("0.7");
+  await page.waitForTimeout(200);
+
+  const probe = await page.evaluate(() => {
+    const s = (window as unknown as { __canvas: { getState: () => unknown } }).__canvas.getState();
+    const state = s as { nodes: { type?: string; data?: Record<string, unknown> }[] };
+    const ag = state.nodes.find((n) => n.type === "agent");
+    return ag?.data;
+  });
+  expect(probe?.model).toBe("claude-sonnet-4-6");
+  expect(probe?.system_prompt).toContain("refund-policy");
+  expect(probe?.user_prompt).toContain("{{ input.order_id }}");
+  expect(Number(probe?.temperature)).toBeCloseTo(0.7, 2);
+
+  await page.screenshot({
+    path: "tests/screenshots/f21-inspector-agent.png",
+    fullPage: false,
+  });
+});
+
+test("Inspector · non-agent 노드에는 agent-only 필드 없음", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await page.locator(".wv-node.n-tool").first().click();
+  await page.waitForTimeout(100);
+
+  await expect(page.locator('select[aria-label="Agent model"]')).toHaveCount(0);
+  await expect(page.locator('textarea[aria-label="System prompt"]')).toHaveCount(0);
+});
+
 /* ── F15: Compose header button opens palette in compose mode directly ── */
 
 test("Compose button skips the commands list and opens compose mode", async ({ page }) => {

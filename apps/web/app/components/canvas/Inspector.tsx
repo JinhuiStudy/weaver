@@ -139,6 +139,7 @@ function PropsForm({ node }: { node: CanvasNode }) {
       </div>
 
       {node.type === "branch" ? <BranchOutputsEditor node={node} /> : null}
+      {node.type === "agent" ? <AgentFields node={node} /> : null}
 
       <div className="border-t border-border pt-3">
         <Button
@@ -152,6 +153,119 @@ function PropsForm({ node }: { node: CanvasNode }) {
       </div>
 
       <DebugPayload node={node} />
+    </div>
+  );
+}
+
+/**
+ * Agent-specific fields. Persisted directly on `node.data` — store already
+ * treats data as `Record<string, unknown>`, and @weaver/core's canvasToGraph
+ * picks up user_prompt as the node body fallback. Full structural validation
+ * happens at save time via parseGraph.
+ */
+function AgentFields({ node }: { node: CanvasNode }) {
+  const updateNodeData = useCanvas((s) => s.updateNodeData);
+
+  const current = node.data as Record<string, unknown>;
+  const model = typeof current.model === "string" ? current.model : "claude-sonnet-4-6";
+  const systemPrompt = typeof current.system_prompt === "string" ? current.system_prompt : "";
+  const userPrompt = typeof current.user_prompt === "string" ? current.user_prompt : "";
+  const temperature = typeof current.temperature === "number" ? current.temperature : 0.2;
+  const toolChoice = typeof current.tool_choice === "string" ? current.tool_choice : "auto";
+
+  const [sysDraft, setSysDraft] = useState(systemPrompt);
+  const [userDraft, setUserDraft] = useState(userPrompt);
+
+  const commit = (patch: Record<string, unknown>) => {
+    // Skip no-op patches — same reason as commitLabel/commitBody: avoid
+    // phantom undo entries.
+    for (const [k, v] of Object.entries(patch)) {
+      if ((current[k] ?? undefined) !== v) {
+        updateNodeData(node.id, patch);
+        return;
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t border-border pt-3">
+      <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
+        agent config
+      </div>
+
+      <div>
+        <div className="label">Model</div>
+        <select
+          aria-label="Agent model"
+          value={model}
+          onChange={(e) => commit({ model: e.target.value })}
+          className="inp mono"
+        >
+          <option value="@cf/meta/llama-3-8b-instruct">Workers AI · Llama 3 8B (free)</option>
+          <option value="claude-sonnet-4-6">Claude Sonnet 4.6 · BYOK</option>
+          <option value="claude-opus-4-7">Claude Opus 4.7 · BYOK</option>
+          <option value="gpt-5">OpenAI GPT-5 · BYOK</option>
+        </select>
+      </div>
+
+      <div>
+        <div className="label">System prompt</div>
+        <textarea
+          aria-label="System prompt"
+          value={sysDraft}
+          onChange={(e) => setSysDraft(e.target.value)}
+          onBlur={() => commit({ system_prompt: sysDraft })}
+          rows={3}
+          className="inp mono"
+          placeholder="You are a …"
+        />
+      </div>
+
+      <div>
+        <div className="label">User prompt</div>
+        <textarea
+          aria-label="User prompt"
+          value={userDraft}
+          onChange={(e) => setUserDraft(e.target.value)}
+          onBlur={() => commit({ user_prompt: userDraft })}
+          rows={3}
+          className="inp mono"
+          placeholder="{{ input.order_id }} 에 대해 …"
+        />
+        <div className="help">
+          변수 보간: {"{{ input.field }}"} · {"{{ <node_label>.<var> }}"}
+        </div>
+      </div>
+
+      <div>
+        <div className="label">
+          Temperature · <code className="text-weaver-cyan">{temperature.toFixed(2)}</code>
+        </div>
+        <input
+          aria-label="Temperature"
+          type="range"
+          min={0}
+          max={2}
+          step={0.05}
+          value={temperature}
+          onChange={(e) => commit({ temperature: Number(e.target.value) })}
+          className="w-full accent-weaver-indigo"
+        />
+      </div>
+
+      <div>
+        <div className="label">Tool choice</div>
+        <select
+          aria-label="Tool choice"
+          value={toolChoice}
+          onChange={(e) => commit({ tool_choice: e.target.value })}
+          className="inp mono"
+        >
+          <option value="auto">auto · 모델이 tool 판단</option>
+          <option value="any">any · 무조건 tool 호출</option>
+          <option value="none">none · tool 호출 금지</option>
+        </select>
+      </div>
     </div>
   );
 }
