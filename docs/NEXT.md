@@ -18,11 +18,30 @@
 - 빌더 캔버스 (드래그 · 연결 · 인스펙터 · Yjs 로컬 영속)
 
 **아직 안 된 것** (중요도 순):
+0. **인증 · 멀티테넌트** — 익명 `/api/runs` 가 Free 한도를 스팸으로 태울 수 있음. ([`AUTH-PLAN.md`](./AUTH-PLAN.md))
 1. 빌더 UI → Runtime API 완전 연결 (compose diff 수락 플로우, Run 상태 실시간 반영)
 2. OTEL tracing (`gen_ai.*` spans → Axiom Free)
 3. Tool registry (HTTP/SQL built-in + custom)
 4. BYOK UX (Claude/OpenAI 키 저장 + 모델 선택 UI)
 5. Eval α (`packages/eval` + 데이터셋 업로드)
+
+---
+
+## Sprint 0 — 인증 · 멀티테넌트 · Rate Limit (~5일, 2-3 PR) 🔴 **최우선**
+
+**근거**: 익명 `/api/runs` 가 Free tier 한도를 태울 리스크. BYOK(Sprint 4), Eval(Sprint 5) 도 org 구분이 전제.
+
+**선택**: **GitHub OAuth primary + Magic Link (Resend Free) fallback** · JWT 세션 · D1 user/org/membership · KV rate limit.
+
+**상세 계획**: [`AUTH-PLAN.md`](./AUTH-PLAN.md) (전체 단계 · 테스트 · 예산 · 스키마 포함)
+
+**Day 1**: migration (`users/orgs/memberships/magic_tokens/user_secrets`) · JWT 라이브러리 · Doppler secrets 5개
+**Day 2**: `/auth/github` · `/auth/callback` · GitHub OAuth 앱 등록 (dev/prod 2개)
+**Day 3**: Hono runtime middleware · `/api/me` · body org_id override 방지
+**Day 4**: `/login` 페이지 · 세션 hook · RR7 loader 가드 · 스크린샷 눈 검증
+**Day 5**: Rate limiter (IP + org) · 프로덕션 배포 · 스모크 테스트
+
+**Exit**: 익명 401 · 깃헙 로그인 후 `/api/runs` 실행 시 `created_by`/`org_id` 정확히 기록 · 통합 + e2e 그린.
 
 ---
 
