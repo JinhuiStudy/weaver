@@ -70,10 +70,14 @@ export function CommandPalette({
   open,
   onClose,
   ctx,
+  initialMode = "commands",
 }: {
   open: boolean;
   onClose: () => void;
   ctx: CommandContext;
+  /** "compose" jumps straight to the NL prompt textarea — the Compose button
+   *  in the header uses this so users don't have to drill through ⌘K first. */
+  initialMode?: "commands" | "compose";
 }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -90,15 +94,21 @@ export function CommandPalette({
   const removeNode = useCanvas((s) => s.removeNode);
   const selectedId = useCanvas((s) => s.selectedId);
 
-  // Reset everything every time the palette opens.
+  // Reset everything every time the palette opens. Initial mode comes from
+  // the caller so the header's Compose button can skip straight to prompt.
   useEffect(() => {
     if (!open) return;
     setQuery("");
     setActiveIndex(0);
-    setMode({ kind: "commands" });
     setComposePrompt("");
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open]);
+    if (initialMode === "compose") {
+      setMode({ kind: "compose", submitting: false, error: null });
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    } else {
+      setMode({ kind: "commands" });
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [open, initialMode]);
 
   const allCommands = useMemo<Command[]>(() => {
     const cmds: Command[] = [

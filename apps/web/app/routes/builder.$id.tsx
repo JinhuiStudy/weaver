@@ -2,6 +2,7 @@ import type { Edge } from "@xyflow/react";
 import {
   ArrowLeft,
   Check,
+  HelpCircle,
   Loader2,
   Play,
   Redo2,
@@ -13,6 +14,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { CommandPalette } from "~/components/canvas/CommandPalette";
+import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
@@ -156,6 +158,13 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
   );
 
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteInitialMode, setPaletteInitialMode] = useState<"commands" | "compose">("commands");
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const openPalette = useCallback((mode: "commands" | "compose" = "commands") => {
+    setPaletteInitialMode(mode);
+    setPaletteOpen(true);
+  }, []);
 
   // Global keyboard shortcuts. All of them skip when the focus is inside a
   // text-entry element so we don't hijack the browser's native text editing
@@ -165,15 +174,23 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       const inTextField = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+
+      // "?" (Shift+/) — no modifier required, so check BEFORE the meta gate.
+      if (!inTextField && (e.key === "?" || (e.shiftKey && e.key === "/"))) {
+        e.preventDefault();
+        setHelpOpen(true);
+        return;
+      }
+
+      if (!(e.metaKey || e.ctrlKey)) return;
       const key = e.key.toLowerCase();
 
       if (key === "k") {
         e.preventDefault();
-        setPaletteOpen(true);
+        openPalette("commands");
         return;
       }
       if (key === "z") {
@@ -192,7 +209,7 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, onSave]);
+  }, [undo, redo, onSave, openPalette]);
 
   return (
     <div className="flex h-screen flex-col bg-bg-base text-text-primary">
@@ -233,12 +250,23 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           >
             <Redo2 className="lu" />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<HelpCircle className="lu" />}
+            onClick={() => setHelpOpen(true)}
+            title="Help · ?"
+          >
+            Help
+            <Kbd className="ml-1">?</Kbd>
+          </Button>
           <span className="h-4 w-px bg-border" aria-hidden />
           <Button
             variant="ghost"
             size="sm"
             leftIcon={<Sparkles className="lu" />}
-            onClick={() => setPaletteOpen(true)}
+            onClick={() => openPalette("compose")}
+            title="Compose with AI"
           >
             Compose
             <Kbd className="ml-1">⌘K</Kbd>
@@ -281,7 +309,9 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         ctx={{ onSave, onImport: onImportClick }}
+        initialMode={paletteInitialMode}
       />
+      <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

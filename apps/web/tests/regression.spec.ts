@@ -159,6 +159,84 @@ test("Compose with AI · prompt submit applies the runtime diff to the canvas", 
   });
 });
 
+/* ── F14: Help modal (? button) ──────────────────────────────────── */
+
+test("Help button opens a modal listing shortcuts · actions · links", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await expect(page.locator('[role="dialog"][aria-label="Help"]')).toHaveCount(0);
+
+  await page.locator('button[title^="Help"]').click();
+  const dialog = page.locator('[role="dialog"][aria-label="Help"]');
+  await expect(dialog).toBeVisible();
+
+  // Must cover the three main reference areas.
+  await expect(dialog.locator("h3", { hasText: /Shortcuts/i })).toBeVisible();
+  await expect(dialog.locator("h3", { hasText: /Actions/i })).toBeVisible();
+  await expect(dialog.locator("h3", { hasText: /Links/i })).toBeVisible();
+
+  // Each major shortcut must appear somewhere in the modal.
+  for (const shortcut of ["⌘K", "⌘S", "⌘Z", "⌘⇧Z", "Delete", "Backspace"]) {
+    await expect(dialog).toContainText(shortcut);
+  }
+
+  // Link to /design should be present and clickable.
+  const designLink = dialog.locator('a[href="/design"]');
+  await expect(designLink).toBeVisible();
+
+  await page.screenshot({ path: "tests/screenshots/f14-help-modal.png", fullPage: false });
+
+  // Escape closes it.
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(100);
+  await expect(dialog).toHaveCount(0);
+});
+
+test("? key also opens the Help modal (keyboard discovery)", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Focus off the inspector so the key isn't captured by an input.
+  await page.locator(".react-flow__pane").click({ position: { x: 20, y: 20 } });
+  await page.keyboard.press("Shift+/"); // "?" in most US/KR layouts
+  await page.waitForTimeout(120);
+  await expect(page.locator('[role="dialog"][aria-label="Help"]')).toBeVisible();
+});
+
+/* ── F15: Compose header button opens palette in compose mode directly ── */
+
+test("Compose button skips the commands list and opens compose mode", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Click the header Compose button (not ⌘K).
+  await page.locator('button[title^="Compose"], button:has-text("Compose")').first().click();
+  await page.waitForTimeout(100);
+
+  const dialog = page.locator('[role="dialog"][aria-label="Command palette"]');
+  await expect(dialog).toBeVisible();
+
+  // compose mode shows the prompt textarea immediately. commands-list input
+  // is NOT present.
+  await expect(page.locator('textarea[aria-label="Compose prompt"]')).toBeVisible();
+  await expect(
+    page.locator('[role="dialog"][aria-label="Command palette"] input[placeholder*="검색"]'),
+  ).toHaveCount(0);
+});
+
+test("⌘K still opens the palette in commands mode (not compose)", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await page.keyboard.press("Meta+k");
+  await page.waitForTimeout(100);
+  await expect(
+    page.locator('[role="dialog"][aria-label="Command palette"] input[placeholder*="검색"]'),
+  ).toBeVisible();
+  await expect(page.locator('textarea[aria-label="Compose prompt"]')).toHaveCount(0);
+});
+
 /* ── F13: polish — palette animation · node icons · /runs/:runId ───── */
 
 test("palette backdrop has the fade-in animation applied", async ({ page }) => {
