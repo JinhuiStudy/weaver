@@ -1204,3 +1204,30 @@ p {
   background: var(--weaver-indigo-soft);
   border: 1px dashed var(--weaver-indigo);
 }
+
+/* ── Command palette entrance — subtle fade + lift ─────── */
+@keyframes wv-palette-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+[role="dialog"][aria-label="Command palette"] {
+  animation: wv-palette-in var(--dur-fast) var(--ease-out);
+}
+
+/* kind-icon next to the type dot — inherits node color */
+.wv-node .kind-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-tertiary);
+}
+.wv-node.n-input .kind-icon { color: var(--node-input); }
+.wv-node.n-agent .kind-icon { color: var(--node-agent); }
+.wv-node.n-tool .kind-icon { color: var(--node-tool); }
+.wv-node.n-branch .kind-icon { color: var(--node-branch); }
+.wv-node.n-output .kind-icon { color: var(--node-output); }

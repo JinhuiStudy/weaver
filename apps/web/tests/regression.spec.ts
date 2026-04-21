@@ -159,6 +159,47 @@ test("Compose with AI · prompt submit applies the runtime diff to the canvas", 
   });
 });
 
+/* ── F13: polish — palette animation · node icons · /runs/:runId ───── */
+
+test("palette backdrop has the fade-in animation applied", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await page.keyboard.press("Meta+k");
+  await page.locator('[role="dialog"][aria-label="Command palette"]').waitFor();
+
+  const animationName = await page
+    .locator('[role="dialog"][aria-label="Command palette"]')
+    .evaluate((el) => getComputedStyle(el).animationName);
+  expect(animationName).not.toBe("none");
+});
+
+test("each node type renders a kind-icon (lucide) next to the kicker", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // The seed includes one node of every type. The node header should carry
+  // an <svg> (rendered by lucide-react) identifiable via the .kind-icon hook.
+  for (const type of ["input", "tool", "agent", "branch", "output"] as const) {
+    const node = page.locator(`.wv-node.n-${type}`).first();
+    await expect(node.locator(".kind-icon svg")).toBeVisible();
+  }
+  await page.screenshot({
+    path: "tests/screenshots/f13-node-icons.png",
+    fullPage: false,
+  });
+});
+
+test("/tools/:id/runs/:runId renders a trace viewer placeholder", async ({ page }) => {
+  await page.goto("/tools/demo/runs/01HXY");
+  await expect(page.locator("h1", { hasText: /Trace/i })).toBeVisible();
+  await expect(page.locator("text=01HXY").first()).toBeVisible();
+  await page.screenshot({
+    path: "tests/screenshots/f13-trace-placeholder.png",
+    fullPage: false,
+  });
+});
+
 test("palette jump-to-node highlights it in the inspector", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

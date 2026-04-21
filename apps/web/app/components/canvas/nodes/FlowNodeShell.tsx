@@ -1,7 +1,21 @@
 import { Handle, Position } from "@xyflow/react";
+import { GitBranch, type LucideIcon, Send, Sparkles, Webhook, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "~/lib/cn";
 import type { NodeState, NodeType } from "../WvNode";
+
+/**
+ * Lucide icon per node type — matches the type palette colors semantically.
+ * Kept in one place so future additions (SQL tool, Slack tool, etc.) can
+ * diverge without touching shell markup.
+ */
+const KIND_ICON: Record<NodeType, LucideIcon> = {
+  input: Webhook,
+  agent: Sparkles,
+  tool: Wrench,
+  branch: GitBranch,
+  output: Send,
+};
 
 export interface FlowNodeData {
   kind?: string;
@@ -46,6 +60,12 @@ export function FlowNodeShell({
 
       <div className="head">
         <span className="dot" aria-hidden />
+        <span className="kind-icon" aria-hidden>
+          {(() => {
+            const Icon = KIND_ICON[type];
+            return <Icon size={10} strokeWidth={1.75} />;
+          })()}
+        </span>
         <span className="kind">{kindLabel}</span>
       </div>
       <h4 className="label">{data.label}</h4>
