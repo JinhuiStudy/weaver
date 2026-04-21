@@ -8,6 +8,8 @@
     "deploy": "react-router build && wrangler deploy",
     "dev": "react-router dev",
     "preview": "react-router build && vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "react-router typegen && tsc -b"
   },
   "dependencies": {
@@ -27,6 +29,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.1",
+    "@playwright/test": "^1.59.1",
     "@react-router/dev": "7.14.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",

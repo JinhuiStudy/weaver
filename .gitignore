@@ -42,3 +42,10 @@ playwright/.cache/
 # Temp
 *.tmp
 *.temp
+
+# Playwright
+/playwright-report/
+/test-results/
+/apps/*/playwright-report/
+/apps/*/test-results/
+/apps/*/playwright/.cache/

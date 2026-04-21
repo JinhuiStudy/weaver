@@ -30,7 +30,9 @@ export function Inspector() {
           {
             id: "props",
             label: "PROPS",
-            content: node ? <PropsForm node={node} /> : <EmptyInspector />,
+            // Remount PropsForm per node so its local (label/body) state
+            // reinitializes cleanly when selection changes.
+            content: node ? <PropsForm key={node.id} node={node} /> : <EmptyInspector />,
           },
           {
             id: "trace",
@@ -64,9 +66,6 @@ function PropsForm({ node }: { node: CanvasNode }) {
 
   const [label, setLabel] = useState<string>(node.data.label ?? "");
   const [body, setBody] = useState<string>(stringifyBody(node.data.body));
-
-  // re-sync local state when selection changes
-  if (label !== node.data.label && label === "") setLabel(node.data.label ?? "");
 
   const labelError = validateLabel(label);
 
@@ -151,20 +150,19 @@ function PropsForm({ node }: { node: CanvasNode }) {
 }
 
 function BranchOutputsEditor({ node }: { node: CanvasNode }) {
-  const updateNodeData = useCanvas((s) => s.updateNodeData);
+  const addBranchOutput = useCanvas((s) => s.addBranchOutput);
+  const removeBranchOutput = useCanvas((s) => s.removeBranchOutput);
   const outputs = node.data.outputs ?? [];
   const [draft, setDraft] = useState("");
 
   const remove = (id: string) => {
-    updateNodeData(node.id, {
-      outputs: outputs.filter((o) => o !== id),
-    });
+    removeBranchOutput(node.id, id);
   };
 
   const add = () => {
     const v = draft.trim();
     if (!v || outputs.includes(v)) return;
-    updateNodeData(node.id, { outputs: [...outputs, v] });
+    addBranchOutput(node.id, v);
     setDraft("");
   };
 

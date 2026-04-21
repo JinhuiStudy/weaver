@@ -36,6 +36,15 @@ export interface CanvasStore {
   updateNodeData: (id: string, patch: Partial<WvFlowNodeData>) => void;
   removeNode: (id: string) => void;
 
+  /** Branch-specific: add an output port (creates a new right-side handle). */
+  addBranchOutput: (nodeId: string, outputId: string) => void;
+  /**
+   * Branch-specific: remove an output port. Also cascades any edges whose
+   * sourceHandle referenced that port, so the canvas doesn't end up with
+   * dangling edges pointing at a now-missing handle.
+   */
+  removeBranchOutput: (nodeId: string, outputId: string) => void;
+
   setSelection: (id: string | null) => void;
 }
 
@@ -105,6 +114,27 @@ export const useCanvas = create<CanvasStore>((set, get) => ({
       nodes: get().nodes.filter((n) => n.id !== id),
       edges: get().edges.filter((e) => e.source !== id && e.target !== id),
       selectedId: get().selectedId === id ? null : get().selectedId,
+    }),
+
+  addBranchOutput: (nodeId, outputId) =>
+    set({
+      nodes: get().nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "branch") return n;
+        const current = n.data.outputs ?? [];
+        if (current.includes(outputId)) return n;
+        return { ...n, data: { ...n.data, outputs: [...current, outputId] } };
+      }),
+    }),
+
+  removeBranchOutput: (nodeId, outputId) =>
+    set({
+      nodes: get().nodes.map((n) => {
+        if (n.id !== nodeId || n.type !== "branch") return n;
+        const next = (n.data.outputs ?? []).filter((o) => o !== outputId);
+        return { ...n, data: { ...n.data, outputs: next } };
+      }),
+      // Cascade: drop any edges whose sourceHandle targeted the removed port.
+      edges: get().edges.filter((e) => !(e.source === nodeId && e.sourceHandle === outputId)),
     }),
 
   setSelection: (id) => set({ selectedId: id }),
