@@ -1118,19 +1118,30 @@ p {
   color: var(--text-primary);
 }
 
+/*
+ * xyflow default places handles at the node edge with
+ * `transform: translate(±50%, -50%)`. We only restyle visuals — do NOT
+ * override `transform` or `left/right`, or xyflow loses its hit area
+ * and drag-to-connect silently breaks.
+ */
 .react-flow__handle.wv-flow-handle {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: var(--surface-4);
   border: 2px solid var(--bg-canvas);
-  transition: all var(--dur-fast) var(--ease-out);
+  pointer-events: all;
+  z-index: 1;
+  transition: box-shadow var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
 }
 .react-flow__handle.wv-flow-handle:hover {
-  transform: translateY(-50%) scale(1.25);
+  box-shadow: 0 0 0 4px var(--weaver-indigo-soft);
 }
-.react-flow__handle-left { left: -6px; }
-.react-flow__handle-right { right: -6px; }
+.react-flow__handle.wv-flow-handle.connecting,
+.react-flow__handle.wv-flow-handle.connectionindicator:hover {
+  box-shadow: 0 0 0 4px var(--weaver-cyan-soft);
+}
 
 .wv-node.n-input .react-flow__handle-right { background: var(--node-input); }
 .wv-node.n-agent .react-flow__handle { background: var(--node-agent); }
