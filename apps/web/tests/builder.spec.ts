@@ -485,6 +485,45 @@ test("Import JSON replaces the canvas with the uploaded graph", async ({ page })
   });
 });
 
+test("⌘S triggers the same export as clicking Save", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Make sure focus is on the canvas (not a text input, where ⌘S should do
+  // nothing) before firing.
+  await page.locator(".react-flow__pane").click({ position: { x: 20, y: 20 } });
+  await page.waitForTimeout(50);
+
+  const downloadPromise = page.waitForEvent("download", { timeout: 3000 });
+  await page.keyboard.press("Meta+s");
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.weaver\.json$/);
+});
+
+test("⌘S inside a label input does NOT trigger the export", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const agent = page.locator(".wv-node.n-agent").first();
+  await agent.click();
+  await page.waitForTimeout(100);
+  const labelInput = page.locator('input[placeholder="policy_check"]');
+  await labelInput.click();
+
+  // Register the download listener FIRST (without awaiting), then press the
+  // shortcut, then see if it fired within the window. If our handler correctly
+  // skips text-field focus, no download should be triggered.
+  // waitForEvent rejects on timeout — swallow that into "timeout" so the race
+  // resolves cleanly.
+  const downloadPromise = page
+    .waitForEvent("download", { timeout: 600 })
+    .then(() => "download" as const)
+    .catch(() => "timeout" as const);
+  await page.keyboard.press("Meta+s");
+  const outcome = await downloadPromise;
+  expect(outcome).toBe("timeout");
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

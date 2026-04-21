@@ -154,23 +154,35 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     [params.id],
   );
 
-  // Global keyboard shortcuts (⌘Z / ⌘⇧Z). We skip when a form field is focused
-  // so Cmd+Z inside a label/textarea edits text instead of rewinding the graph.
+  // Global keyboard shortcuts. All of them skip when the focus is inside a
+  // text-entry element so we don't hijack the browser's native text editing
+  // (e.g. ⌘Z inside an <input>, ⌘S → native save-page dialog).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (e.key !== "z" && e.key !== "Z") return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
-      e.preventDefault();
-      if (e.shiftKey) redo();
-      else undo();
+      const inTextField = tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+      const key = e.key.toLowerCase();
+
+      if (key === "z") {
+        if (inTextField) return;
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if (key === "s") {
+        if (inTextField) return;
+        e.preventDefault();
+        onSave();
+        return;
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, onSave]);
 
   return (
     <div className="flex h-screen flex-col bg-bg-base text-text-primary">
