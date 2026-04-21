@@ -1,12 +1,13 @@
 import type { Edge } from "@xyflow/react";
-import { ArrowLeft, Check, Loader2, Play, Save, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Loader2, Play, Redo2, Save, Sparkles, Undo2 } from "lucide-react";
+import { useEffect } from "react";
 import { Link } from "react-router";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
 import { Badge, Button, Kbd } from "~/components/ui";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
-import type { CanvasNode } from "~/stores/canvas";
+import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
 
 export function meta({ params }: Route.MetaArgs) {
@@ -105,6 +106,30 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     seedEdges: demoEdges,
   });
 
+  // Zustand selectors — re-render only when these specific slices change.
+  const undo = useCanvas((s) => s.undo);
+  const redo = useCanvas((s) => s.redo);
+  const historyLength = useCanvas((s) => s.history.length);
+  const futureLength = useCanvas((s) => s.future.length);
+
+  // Global keyboard shortcuts (⌘Z / ⌘⇧Z). We skip when a form field is focused
+  // so Cmd+Z inside a label/textarea edits text instead of rewinding the graph.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key !== "z" && e.key !== "Z") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
+
   return (
     <div className="flex h-screen flex-col bg-bg-base text-text-primary">
       <header className="flex items-center justify-between border-b border-border bg-surface-1 px-4 py-2.5">
@@ -122,6 +147,29 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            disabled={historyLength === 0}
+            onClick={undo}
+            aria-label="Undo (⌘Z)"
+            title="Undo · ⌘Z"
+          >
+            <Undo2 className="lu" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            disabled={futureLength === 0}
+            onClick={redo}
+            aria-label="Redo (⌘⇧Z)"
+            title="Redo · ⌘⇧Z"
+          >
+            <Redo2 className="lu" />
+          </Button>
+          <span className="h-4 w-px bg-border" aria-hidden />
           <Button variant="ghost" size="sm" leftIcon={<Sparkles className="lu" />}>
             Compose
             <Kbd className="ml-1">⌘K</Kbd>

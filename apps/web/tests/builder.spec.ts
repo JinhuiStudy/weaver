@@ -301,6 +301,74 @@ test("duplicate label across nodes surfaces an inspector error", async ({ page }
   });
 });
 
+/**
+ * ⌘Z / ⌘⇧Z undo & redo. History must round-trip for the semantic mutations
+ * users actually reach for: delete node, rename label, add branch output.
+ * Dragging (position changes) is **not** undoable in v1 — acceptable; see
+ * canvas store docs.
+ */
+test("⌘Z undoes a node delete and ⌘⇧Z redoes it", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const tool = page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" });
+  await tool.click();
+  await page.waitForTimeout(100);
+  await page.keyboard.press("Delete");
+  await page.waitForTimeout(150);
+  await expect(page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" })).toHaveCount(0);
+  await page.screenshot({ path: "tests/screenshots/80-after-delete.png", fullPage: false });
+
+  // Undo — stripe_lookup should come back with both incoming and outgoing edges
+  // restored (cascade was atomic, so undo restores atomically too).
+  await page.keyboard.press("Meta+z");
+  await page.waitForTimeout(150);
+  await expect(page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" })).toHaveCount(1);
+  await page.screenshot({ path: "tests/screenshots/81-after-undo.png", fullPage: false });
+
+  // Redo — gone again.
+  await page.keyboard.press("Meta+Shift+z");
+  await page.waitForTimeout(150);
+  await expect(page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" })).toHaveCount(0);
+  await page.screenshot({ path: "tests/screenshots/82-after-redo.png", fullPage: false });
+});
+
+test("⌘Z undoes a label rename, ⌘⇧Z re-applies it", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const agent = page.locator(".wv-node.n-agent").first();
+  await agent.click();
+  await page.waitForTimeout(100);
+
+  const labelInput = page.locator('input[placeholder="policy_check"]');
+  await labelInput.fill("policy_check_v2");
+  await labelInput.press("Enter");
+  await page.waitForTimeout(100);
+
+  await expect(
+    page.locator(".wv-node.n-agent .label", { hasText: /^policy_check_v2$/ }),
+  ).toBeVisible();
+
+  // Take focus off the inspector so our global ⌘Z handler (which is a no-op
+  // inside INPUT/TEXTAREA to preserve native text undo) fires.
+  await page.locator(".react-flow__pane").click({ position: { x: 20, y: 20 } });
+  await page.waitForTimeout(50);
+
+  await page.keyboard.press("Meta+z");
+  await page.waitForTimeout(150);
+  await expect(
+    page.locator(".wv-node.n-agent .label", { hasText: /^policy_check$/ }),
+  ).toBeVisible();
+
+  // Redo with ⌘⇧Z.
+  await page.keyboard.press("Meta+Shift+z");
+  await page.waitForTimeout(150);
+  await expect(
+    page.locator(".wv-node.n-agent .label", { hasText: /^policy_check_v2$/ }),
+  ).toBeVisible();
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

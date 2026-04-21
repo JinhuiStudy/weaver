@@ -65,12 +65,22 @@ function PropsForm({ node }: { node: CanvasNode }) {
   );
   const currentLabelError = labelError(label) ?? uniqueLabelError(label, node.id, siblings);
 
+  // Only call `updateNodeData` when the value actually changed. Otherwise a
+  // benign blur (e.g. clicking elsewhere on the canvas) fires an identity
+  // update that still counts as a history-worthy mutation, and users get
+  // phantom undo steps that appear to do nothing.
+  // Only call `updateNodeData` when the value actually changed. Otherwise a
+  // benign blur (clicking elsewhere on the canvas) fires an identity update
+  // that still counts as a history-worthy mutation, and users get phantom
+  // undo steps that appear to do nothing.
   const commitLabel = () => {
     if (currentLabelError) return;
+    if (label === (node.data.label ?? "")) return;
     updateNodeData(node.id, { label });
   };
 
   const commitBody = () => {
+    if (body === stringifyBody(node.data.body)) return;
     updateNodeData(node.id, { body });
   };
 
@@ -103,7 +113,8 @@ function PropsForm({ node }: { node: CanvasNode }) {
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              commitLabel();
+              // Let onBlur handle the commit so we don't invoke it twice
+              // (blur() below triggers onBlur → commitLabel naturally).
               (e.target as HTMLInputElement).blur();
             }
           }}
