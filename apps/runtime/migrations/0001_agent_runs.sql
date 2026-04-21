@@ -1,27 +1,26 @@
--- Week 4 — D1 agent_runs / run_history.
--- See docs/ARCHITECTURE.md §2. Cron pulls from `agent_runs` by
--- (status, next_step_at), advances one step via executor/step.ts, writes back.
+-- Week 4 · D1 agent_runs / run_history.
+-- Cron selects by (status, next_step_at) and advances one step via
+-- executor/step.ts. See docs/ARCHITECTURE.md 2.
 
 CREATE TABLE IF NOT EXISTS agent_runs (
-  id              TEXT PRIMARY KEY,           -- ULID / UUID
+  id              TEXT PRIMARY KEY,
   tool_id         TEXT NOT NULL,
   tool_version    INTEGER NOT NULL,
   org_id          TEXT NOT NULL,
-  status          TEXT NOT NULL,              -- pending|running|waiting_*|complete|failed
-  input           TEXT NOT NULL,              -- JSON payload
+  status          TEXT NOT NULL,
+  input           TEXT NOT NULL,
   current_node_id TEXT,
-  state           TEXT NOT NULL DEFAULT '{}', -- JSON (accumulated node outputs)
-  next_step_at    INTEGER,                    -- Unix ms; NULL = run now
+  state           TEXT NOT NULL DEFAULT '{}',
+  graph_json      TEXT,
+  next_step_at    INTEGER,
   retry_count     INTEGER NOT NULL DEFAULT 0,
   cost_usd_micro  INTEGER NOT NULL DEFAULT 0,
-  trace_id        TEXT,                       -- Axiom join key
+  trace_id        TEXT,
   created_at      INTEGER NOT NULL,
   updated_at      INTEGER NOT NULL,
   completed_at    INTEGER
 );
 
--- "Pickup" query: SELECT … WHERE status IN ('pending','running')
---   AND (next_step_at IS NULL OR next_step_at <= ?). Needs a compound index.
 CREATE INDEX IF NOT EXISTS idx_runs_pending
   ON agent_runs (status, next_step_at)
   WHERE status IN ('pending', 'running');
@@ -35,7 +34,7 @@ CREATE TABLE IF NOT EXISTS run_history (
   output          TEXT,
   duration_ms     INTEGER,
   cost_usd_micro  INTEGER,
-  span_id         TEXT,                       -- Axiom correlation
+  span_id         TEXT,
   error_message   TEXT,
   created_at      INTEGER NOT NULL
 );
