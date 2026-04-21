@@ -1,0 +1,1551 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Weaver — Wireframes</title>
+<link rel="stylesheet" href="tokens.css" />
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); font-size: 13px; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  svg.lu { width: 14px; height: 14px; stroke-width: 1.75; }
+
+  /* ── Global app chrome ─────────────────────────────────── */
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar { height: 48px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 16px; background: var(--surface-1); position: sticky; top: 0; z-index: 40; }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: -0.01em; font-size: 14px; }
+  .brand svg { width: 20px; height: 20px; }
+  .tabs { display: flex; gap: 2px; margin-left: 16px; }
+  .tab { padding: 6px 12px; font-size: 12px; color: var(--text-tertiary); border-radius: 6px; cursor: pointer; font-family: var(--font-mono); letter-spacing: 0.02em; transition: all 150ms; }
+  .tab:hover { color: var(--text-primary); background: var(--surface-2); }
+  .tab.active { color: var(--text-primary); background: var(--surface-3); }
+  .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-tertiary); }
+  .avatar { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #A855F7); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: #fff; }
+
+  /* ── Screen frame ──────────────────────────────────────── */
+  .screen { border-top: 1px solid var(--border); }
+  .screen-head { padding: 48px 48px 24px; max-width: 1440px; margin: 0 auto; display: flex; align-items: baseline; gap: 20px; }
+  .screen-head .num { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; }
+  .screen-head h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .screen-head .path { font-family: var(--font-mono); font-size: 11px; color: var(--weaver-cyan); margin-left: auto; }
+  .screen-body { max-width: 1440px; margin: 0 auto; padding: 0 48px 80px; }
+
+  /* Device/screen containers — simulated browser */
+  .device { background: var(--bg-base); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .device-chrome { height: 36px; background: var(--surface-1); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 14px; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+  .device-chrome .dots { display: flex; gap: 6px; margin-right: 8px; }
+  .device-chrome .dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--surface-4); }
+  .device-chrome .url { background: var(--surface-2); padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); flex: 1; color: var(--text-secondary); }
+
+  /* ── BUILDER layout ────────────────────────────────────── */
+  .builder { display: grid; grid-template-columns: 72px 1fr 360px; height: 760px; background: var(--bg-canvas); }
+  .palette { border-right: 1px solid var(--border); background: var(--surface-1); display: flex; flex-direction: column; align-items: center; padding: 12px 0; gap: 4px; }
+  .palette .ptool { width: 48px; height: 48px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text-tertiary); font-size: 9px; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; transition: all 150ms; }
+  .palette .ptool:hover { background: var(--surface-3); color: var(--text-primary); }
+  .palette .ptool .dot { width: 12px; height: 12px; border-radius: 3px; }
+  .palette .divider { width: 32px; height: 1px; background: var(--border); margin: 8px 0; }
+
+  .canvas-area { position: relative; background: var(--bg-canvas); background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0); background-size: 24px 24px; overflow: hidden; }
+  .canvas-topbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; z-index: 5; }
+  .tool-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-weight: 500; }
+  .tool-chip .v { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); padding: 2px 6px; background: var(--surface-3); border-radius: 4px; }
+  .canvas-topbar .right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+
+  .zoom-ctl { position: absolute; bottom: 16px; left: 16px; display: flex; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; z-index: 5; }
+  .zoom-ctl button { background: transparent; border: none; padding: 8px 10px; color: var(--text-secondary); cursor: pointer; font-family: var(--font-mono); font-size: 11px; }
+  .zoom-ctl button:hover { background: var(--surface-3); color: var(--text-primary); }
+  .zoom-ctl button + button { border-left: 1px solid var(--border); }
+
+  .minimap { position: absolute; bottom: 16px; right: 16px; width: 180px; height: 120px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; z-index: 5; }
+  .minimap .viewport { position: absolute; inset: 20% 30% 30% 10%; border: 1px solid var(--weaver-indigo); background: rgba(99,102,241,0.08); border-radius: 2px; }
+  .minimap .mn { position: absolute; border-radius: 2px; }
+
+  /* Nodes inside builder */
+  .wv-node { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; min-width: 200px; box-shadow: var(--shadow-card); position: absolute; font-family: var(--font-sans); }
+  .wv-node .head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .wv-node .dot { width: 7px; height: 7px; border-radius: 2px; flex-shrink: 0; }
+  .wv-node .kind { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary); }
+  .wv-node .label { font-size: 13px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .wv-node .body { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .wv-node .port { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--surface-4); border: 2px solid var(--bg-canvas); top: 50%; transform: translateY(-50%); }
+  .wv-node .port.in { left: -6px; }
+  .wv-node .port.out { right: -6px; }
+  .wv-node.n-input { border-color: color-mix(in srgb, var(--node-input) 40%, var(--border-strong)); }
+  .wv-node.n-input .dot { background: var(--node-input); box-shadow: 0 0 6px var(--node-input); }
+  .wv-node.n-input .port.out { background: var(--node-input); }
+  .wv-node.n-agent { border-color: color-mix(in srgb, var(--node-agent) 40%, var(--border-strong)); }
+  .wv-node.n-agent .dot { background: var(--node-agent); box-shadow: 0 0 6px var(--node-agent); }
+  .wv-node.n-agent .port { background: var(--node-agent); }
+  .wv-node.n-tool { border-color: color-mix(in srgb, var(--node-tool) 40%, var(--border-strong)); }
+  .wv-node.n-tool .dot { background: var(--node-tool); box-shadow: 0 0 6px var(--node-tool); }
+  .wv-node.n-tool .port { background: var(--node-tool); }
+  .wv-node.n-branch { border-color: color-mix(in srgb, var(--node-branch) 40%, var(--border-strong)); }
+  .wv-node.n-branch .dot { background: var(--node-branch); box-shadow: 0 0 6px var(--node-branch); }
+  .wv-node.n-branch .port { background: var(--node-branch); }
+  .wv-node.n-output { border-color: color-mix(in srgb, var(--node-output) 40%, var(--border-strong)); }
+  .wv-node.n-output .dot { background: var(--node-output); box-shadow: 0 0 6px var(--node-output); }
+  .wv-node.n-output .port.in { background: var(--node-output); }
+  .wv-node.selected { border-color: var(--weaver-indigo); box-shadow: 0 0 0 2px var(--weaver-indigo), 0 8px 24px rgba(99,102,241,0.25); }
+  .wv-node .status-pill { position: absolute; top: -8px; right: 12px; font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+  .wv-node .dur { position: absolute; bottom: -8px; right: 12px; font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); background: var(--bg-canvas); padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); }
+
+  /* Right panel (inspector / trace) */
+  .rpanel { border-left: 1px solid var(--border); background: var(--surface-1); display: flex; flex-direction: column; }
+  .rpanel-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .rpanel-tabs .t { flex: 1; padding: 10px 12px; font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; text-align: center; cursor: pointer; border-bottom: 2px solid transparent; }
+  .rpanel-tabs .t.active { color: var(--text-primary); border-bottom-color: var(--weaver-indigo); }
+  .rpanel-body { flex: 1; overflow-y: auto; }
+  .rpanel-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .rpanel-section .sh { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .rpanel-section .sh b { color: var(--text-primary); font-weight: 500; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: 11px; color: var(--text-secondary); }
+  .field input, .field select, .field textarea { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 12px; outline: none; transition: all 150ms; }
+  .field input.mono, .field textarea.mono, .field select.mono { font-family: var(--font-mono); }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--weaver-indigo); box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+
+  /* Trace rows in side panel */
+  .trace-mini { display: flex; flex-direction: column; }
+  .trace-row { display: grid; grid-template-columns: 1fr 50px 60px; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border-subtle); align-items: center; font-size: 11px; cursor: pointer; }
+  .trace-row:hover { background: var(--surface-2); }
+  .trace-row.active { background: var(--surface-3); }
+  .trace-row .tn { display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-family: var(--font-mono); }
+  .trace-row .tn .td { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .trace-row .dur { font-family: var(--font-mono); color: var(--text-tertiary); text-align: right; font-size: 10px; }
+  .trace-row .cost { font-family: var(--font-mono); color: var(--text-secondary); text-align: right; font-size: 10px; }
+
+  /* NL composer sidebar */
+  .nl-composer { padding: 16px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; margin-top: 12px; }
+  .nl-composer .prompt { font-size: 12px; color: var(--text-secondary); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--font-mono); line-height: 1.55; }
+  .nl-composer .prompt b { color: var(--weaver-cyan); font-weight: 500; }
+  .nl-composer .actions { display: flex; gap: 6px; margin-top: 10px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; border: 1px solid transparent; cursor: pointer; transition: all 150ms; font-family: inherit; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--weaver-indigo); color: #fff; }
+  .btn-secondary { background: var(--surface-3); color: var(--text-primary); border-color: var(--border); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); }
+  .btn-sm { padding: 5px 9px; font-size: 11px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; font-weight: 500; padding: 3px 7px; border-radius: 5px; letter-spacing: 0.02em; }
+  .badge-ok { background: var(--status-ok-soft); color: var(--status-ok); }
+  .badge-err { background: var(--status-error-soft); color: var(--status-error); }
+  .badge-warn { background: var(--status-warning-soft); color: var(--status-warning); }
+  .badge-running { background: var(--weaver-indigo-soft); color: var(--weaver-indigo); }
+  .badge-muted { background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border); }
+  .badge-info { background: var(--status-info-soft); color: var(--status-info); }
+  .badge .pulse { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 5px currentColor; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  /* ── DASHBOARD layout ────────────────────────────────── */
+  .dash { display: grid; grid-template-columns: 220px 1fr; min-height: 760px; background: var(--bg-base); }
+  .side { border-right: 1px solid var(--border); background: var(--surface-1); padding: 16px 12px; }
+  .side .nav-grp { margin-bottom: 20px; }
+  .side .nav-grp-title { font-family: var(--font-mono); font-size: 9px; color: var(--text-tertiary); letter-spacing: 0.15em; text-transform: uppercase; margin: 8px 8px 6px; }
+  .side .nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 150ms; }
+  .side .nav-item:hover { background: var(--surface-2); color: var(--text-primary); }
+  .side .nav-item.active { background: var(--surface-3); color: var(--text-primary); }
+  .side .nav-item .count { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); }
+  .side .nav-item.active .count { color: var(--weaver-indigo); }
+
+  .dash-main { padding: 32px 40px; overflow-y: auto; }
+  .page-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+  .page-head .sub { color: var(--text-tertiary); font-size: 12px; font-family: var(--font-mono); }
+  .page-head .actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .kpi .lbl { font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .kpi .v { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .kpi .d { font-family: var(--font-mono); font-size: 11px; margin-top: 4px; }
+  .kpi .d.up { color: var(--status-ok); }
+  .kpi .d.dn { color: var(--status-error); }
+  .kpi .spark { height: 28px; margin-top: 8px; }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; }
+  .card-head { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .card-head h3 { font-size: 13px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .card-head .actions { margin-left: auto; display: flex; gap: 6px; }
+  .card-body { padding: 8px 0; }
+
+  .tool-row { display: grid; grid-template-columns: 24px 1.6fr 90px 80px 100px 90px 24px; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
+  .tool-row:last-child { border-bottom: none; }
+  .tool-row:hover { background: var(--surface-2); }
+  .tool-row .ico { width: 24px; height: 24px; background: var(--surface-3); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+  .tool-row .nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tool-row .nm .n { font-weight: 500; font-size: 13px; }
+  .tool-row .nm .d { font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tool-row .mono { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+
+  .mini-spark { height: 20px; width: 100%; }
+
+  /* ── EVAL matrix ─────────────────────────────────────── */
+  .eval-matrix { display: grid; grid-template-columns: 200px repeat(5, 1fr); gap: 2px; background: var(--border); padding: 1px; border-radius: 10px; overflow: hidden; }
+  .eval-matrix > div { background: var(--surface-1); padding: 10px 12px; font-size: 11px; font-family: var(--font-mono); }
+  .eval-matrix .mh { background: var(--surface-2); color: var(--text-tertiary); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .eval-matrix .cell { display: flex; flex-direction: column; gap: 4px; }
+  .eval-matrix .cell .v { font-size: 13px; color: var(--text-primary); }
+  .eval-matrix .cell .t { font-size: 10px; color: var(--text-tertiary); }
+  .eval-matrix .cell.pass { border-left: 2px solid var(--status-ok); }
+  .eval-matrix .cell.fail { border-left: 2px solid var(--status-error); }
+  .eval-matrix .cell.soft { border-left: 2px solid var(--status-warning); }
+
+  /* ── DEPLOY ──────────────────────────────────────────── */
+  .version-track { display: flex; align-items: stretch; gap: 16px; }
+  .version-col { flex: 1; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .version-col .vh { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .version-col .vh .v { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+  .version-col .vh .state { font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .version-col.prod { border-color: rgba(16,185,129,0.3); }
+  .version-col.shadow { border-color: rgba(99,102,241,0.3); background: linear-gradient(180deg, rgba(99,102,241,0.05) 0%, var(--surface-1) 30%); }
+  .version-col .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 12px; }
+  .version-col .stat-row:last-child { border-bottom: none; }
+  .version-col .stat-row .lbl { color: var(--text-tertiary); font-family: var(--font-mono); font-size: 11px; }
+  .version-col .stat-row .v { font-family: var(--font-mono); color: var(--text-primary); }
+  .version-col .stat-row .v.up { color: var(--status-warning); }
+  .version-col .stat-row .v.ok { color: var(--status-ok); }
+
+  .promote-gate { margin-top: 20px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .gate-checks { display: grid; gap: 8px; margin: 14px 0; }
+  .gate-check { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: 6px; font-size: 12px; }
+  .gate-check .r { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .gate-check.pass .r { color: var(--status-ok); }
+  .gate-check.soft .r { color: var(--status-warning); }
+  .gate-check svg { width: 14px; height: 14px; }
+
+  /* ── ADMIN table ─────────────────────────────────────── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .tbl th { text-align: left; padding: 10px 12px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .tbl td { padding: 12px; border-bottom: 1px solid var(--border-subtle); }
+  .tbl tr:hover td { background: var(--surface-2); }
+  .role-chip { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .role-admin { background: rgba(99,102,241,0.14); color: var(--weaver-indigo); }
+  .role-editor { background: rgba(6,182,212,0.14); color: var(--weaver-cyan); }
+  .role-viewer { background: var(--surface-3); color: var(--text-secondary); }
+
+  /* ── RUN detail / timetravel ──────────────────────────── */
+  .run-layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; }
+  .span-insp { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .span-insp .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-family: var(--font-mono); font-size: 11px; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+  .span-insp .kv .k { color: var(--text-tertiary); }
+  .span-insp .kv .v { color: var(--text-primary); word-break: break-all; }
+  .code-block { font-family: var(--font-mono); font-size: 11px; background: var(--bg-base); border: 1px solid var(--border); border-radius: 6px; padding: 12px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; margin: 12px 0; }
+  .code-block .k { color: var(--weaver-cyan); }
+  .code-block .s { color: var(--status-ok); }
+  .code-block .n { color: var(--node-branch); }
+  .code-block .c { color: var(--text-tertiary); }
+
+  /* Waterfall full */
+  .wf { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .wf-row { display: grid; grid-template-columns: 280px 1fr 70px 70px; padding: 8px 14px; border-bottom: 1px solid var(--border-subtle); align-items: center; font-family: var(--font-mono); font-size: 11px; gap: 12px; }
+  .wf-row:hover { background: var(--surface-2); }
+  .wf-row.selected { background: var(--surface-3); }
+  .wf-label { display: flex; align-items: center; gap: 6px; color: var(--text-primary); }
+  .wf-label .indent { width: 12px; flex-shrink: 0; }
+  .wf-label .d { width: 6px; height: 6px; border-radius: 50%; }
+  .bar-track { height: 14px; background: var(--surface-2); border-radius: 2px; position: relative; }
+  .bar { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+  .wf-dur, .wf-cost { text-align: right; color: var(--text-secondary); font-size: 10px; }
+
+  /* dataset case list */
+  .case-list { max-height: 400px; overflow-y: auto; }
+  .case-row { display: grid; grid-template-columns: 16px 80px 1fr 140px 60px; gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); align-items: center; font-size: 12px; cursor: pointer; }
+  .case-row:hover { background: var(--surface-2); }
+  .case-row .cid { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); }
+  .case-row .inp { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .case-row .exp { font-family: var(--font-mono); font-size: 11px; }
+
+  /* ── SIGN IN ─────────────────────────────────────────── */
+  .signin-wrap { height: 760px; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at top, rgba(99,102,241,0.06), var(--bg-base) 60%); }
+  .signin-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .signin-card .logo { display: flex; align-items: center; justify-content: center; margin-bottom: 28px; }
+  .signin-card h2 { font-size: 18px; font-weight: 600; text-align: center; letter-spacing: -0.01em; margin: 0 0 6px; }
+  .signin-card .sub { text-align: center; font-size: 12px; color: var(--text-tertiary); margin-bottom: 28px; }
+  .signin-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 10px 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 150ms; margin-bottom: 10px; }
+  .signin-btn:hover { background: var(--surface-3); border-color: var(--border-strong); }
+  .signin-btn.gh { background: #FFFFFF; color: #000; }
+  .signin-btn.gh:hover { background: #F0F0F0; }
+  .signin-btn svg { width: 16px; height: 16px; }
+  .signin-card .fine { font-size: 11px; color: var(--text-tertiary); text-align: center; margin-top: 24px; font-family: var(--font-mono); }
+
+  /* ── Tool registry detail ────────────────────────────── */
+  .tool-detail-grid { display: grid; grid-template-columns: 1fr 360px; gap: 16px; }
+  .schema-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: var(--font-mono); font-size: 11px; line-height: 1.65; color: var(--text-secondary); }
+  .schema-block .k { color: var(--weaver-cyan); }
+  .schema-block .s { color: var(--status-ok); }
+  .schema-block .ty { color: var(--node-agent); }
+
+  /* divider */
+  .sep { height: 96px; }
+
+  /* Cost heatmap */
+  .heatmap { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; }
+  .heatmap div { height: 14px; border-radius: 2px; background: var(--surface-3); }
+
+  /* Legend */
+  .legend { display: flex; gap: 14px; margin-bottom: 14px; font-size: 11px; font-family: var(--font-mono); color: var(--text-tertiary); align-items: center; }
+  .legend .lgi { display: flex; align-items: center; gap: 5px; }
+  .legend .d { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* index header */
+  .idx-hero { padding: 80px 48px 48px; max-width: 1440px; margin: 0 auto; }
+  .idx-hero h1 { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 14px; }
+  .idx-hero h1 em { font-style: normal; color: var(--weaver-indigo); font-weight: 500; }
+  .idx-hero p { color: var(--text-secondary); font-size: 15px; max-width: 620px; margin: 0 0 24px; line-height: 1.55; }
+  .idx-hero .meta { font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); display: flex; gap: 18px; }
+  .idx-hero .meta b { color: var(--text-primary); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- Top chrome (shared across file; not a real app chrome) -->
+<div class="idx-hero">
+  <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; display: flex; gap: 12px; align-items: center;">
+    <span style="width: 24px; height: 1px; background: var(--text-tertiary);"></span>
+    Weaver / Wireframes · v0.1 · 2026 W17
+  </div>
+  <h1>전 화면 와이어프레임.<br><em>8 surfaces</em> · 실제 제품 구조 그대로.</h1>
+  <p>VISION·PRODUCT·ARCHITECTURE·3 specs(eval-dsl / node-types / tool-registry) 전부 반영. 모든 인터랙션은 디자인 시스템 토큰(indigo · 5 node types · 150 ms)을 그대로 사용합니다.</p>
+  <div class="meta">
+    <span><b>01</b> Sign in</span>
+    <span><b>02</b> Dashboard</span>
+    <span><b>03</b> Builder</span>
+    <span><b>04</b> Run detail</span>
+    <span><b>05</b> Eval</span>
+    <span><b>06</b> Deploy</span>
+    <span><b>07</b> Tool registry</span>
+    <span><b>08</b> Admin</span>
+  </div>
+</div>
+
+<!-- ════════════════════════ 01 SIGN IN ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">01</span>
+    <h2>Sign in</h2>
+    <span class="path">/sign-in</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/sign-in</div></div>
+    <div class="signin-wrap">
+      <div class="signin-card">
+        <div class="logo">
+          <svg width="52" height="52" viewBox="0 0 56 56">
+            <path d="M8 20 C 20 20, 20 36, 32 36" stroke="#6366F1" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M8 36 C 20 36, 20 20, 32 20" stroke="#06B6D4" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M32 20 C 44 20, 44 36, 48 36" stroke="#A855F7" stroke-width="3" stroke-linecap="round" fill="none"/>
+            <path d="M32 36 C 44 36, 44 20, 48 20" stroke="#10B981" stroke-width="3" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <h2>Sign in to Weaver</h2>
+        <div class="sub">AI agents as the unit of internal tools.</div>
+        <button class="signin-btn gh">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.2 11.4.6.1.82-.26.82-.58v-2.06c-3.34.72-4.04-1.6-4.04-1.6-.55-1.4-1.34-1.77-1.34-1.77-1.1-.75.08-.73.08-.73 1.2.08 1.83 1.24 1.83 1.24 1.07 1.84 2.8 1.31 3.49 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.6-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5z"/></svg>
+          Continue with GitHub
+        </button>
+        <button class="signin-btn">
+          <i data-lucide="mail" class="lu"></i>
+          Email magic link
+        </button>
+        <div class="fine">By continuing, you agree to the <span style="color: var(--weaver-cyan);">Apache 2.0 license</span> and terms.</div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 02 DASHBOARD ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">02</span>
+    <h2>Dashboard</h2>
+    <span class="path">/</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev</div></div>
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 56 56"><path d="M8 20 C 20 20, 20 36, 32 36" stroke="#6366F1" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M8 36 C 20 36, 20 20, 32 20" stroke="#06B6D4" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M32 20 C 44 20, 44 36, 48 36" stroke="#A855F7" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M32 36 C 44 36, 44 20, 48 20" stroke="#10B981" stroke-width="4" stroke-linecap="round" fill="none"/></svg>
+        Weaver
+      </div>
+      <div class="tabs">
+        <div class="tab active">Tools</div>
+        <div class="tab">Runs</div>
+        <div class="tab">Evals</div>
+        <div class="tab">Registry</div>
+        <div class="tab">Admin</div>
+      </div>
+      <div class="right">
+        <span style="font-family: var(--font-mono);">acme-inc</span>
+        <span style="color: var(--border-strong);">·</span>
+        <span style="display: flex; align-items: center; gap: 6px; color: var(--status-ok);"><span style="width:6px;height:6px;border-radius:50%;background:var(--status-ok);box-shadow:0 0 6px var(--status-ok);"></span> all systems</span>
+        <div class="avatar">JP</div>
+      </div>
+    </div>
+
+    <div class="dash">
+      <!-- Sidebar -->
+      <div class="side">
+        <div class="nav-grp">
+          <div class="nav-grp-title">Workspace</div>
+          <div class="nav-item active"><i data-lucide="home" class="lu"></i>Overview<span class="count">⌘1</span></div>
+          <div class="nav-item"><i data-lucide="boxes" class="lu"></i>Tools<span class="count">12</span></div>
+          <div class="nav-item"><i data-lucide="activity" class="lu"></i>Runs<span class="count">2.8k</span></div>
+          <div class="nav-item"><i data-lucide="shield-check" class="lu"></i>Evals</div>
+          <div class="nav-item"><i data-lucide="rocket" class="lu"></i>Deployments</div>
+        </div>
+        <div class="nav-grp">
+          <div class="nav-grp-title">Catalog</div>
+          <div class="nav-item"><i data-lucide="wrench" class="lu"></i>Tool registry<span class="count">24</span></div>
+          <div class="nav-item"><i data-lucide="database" class="lu"></i>Datasets<span class="count">8</span></div>
+          <div class="nav-item"><i data-lucide="plug" class="lu"></i>Connections</div>
+        </div>
+        <div class="nav-grp">
+          <div class="nav-grp-title">System</div>
+          <div class="nav-item"><i data-lucide="users" class="lu"></i>Members</div>
+          <div class="nav-item"><i data-lucide="coins" class="lu"></i>Usage &amp; budget</div>
+          <div class="nav-item"><i data-lucide="file-text" class="lu"></i>Audit log</div>
+          <div class="nav-item"><i data-lucide="settings" class="lu"></i>Settings</div>
+        </div>
+      </div>
+
+      <!-- Main -->
+      <div class="dash-main">
+        <div class="page-head">
+          <h1>Overview</h1>
+          <span class="sub">acme-inc · Apr 21, 2026 · last 7 days</span>
+          <div class="actions">
+            <button class="btn btn-ghost"><i data-lucide="download" class="lu"></i>Export</button>
+            <button class="btn btn-primary"><i data-lucide="sparkles" class="lu"></i>New agent</button>
+          </div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="lbl">Runs · 7d</div>
+            <div class="v">12,847</div>
+            <div class="d up">↑ 23% vs prev</div>
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="0,20 10,18 20,22 30,15 40,16 50,12 60,14 70,8 80,10 90,6 100,4" fill="none" stroke="#6366F1" stroke-width="1.5"/></svg>
+          </div>
+          <div class="kpi">
+            <div class="lbl">Cost · 7d</div>
+            <div class="v">$42.18</div>
+            <div class="d" style="color: var(--text-tertiary)">$180 budget · 23%</div>
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="0,22 10,20 20,18 30,19 40,14 50,16 60,10 70,12 80,8 90,9 100,7" fill="none" stroke="#06B6D4" stroke-width="1.5"/></svg>
+          </div>
+          <div class="kpi">
+            <div class="lbl">p95 latency</div>
+            <div class="v">1.84<span style="font-size: 13px; color: var(--text-tertiary); font-weight: 400;">s</span></div>
+            <div class="d dn">↓ 12% faster</div>
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="0,10 10,12 20,8 30,14 40,11 50,10 60,8 70,12 80,9 90,11 100,10" fill="none" stroke="#10B981" stroke-width="1.5"/></svg>
+          </div>
+          <div class="kpi">
+            <div class="lbl">Failure rate</div>
+            <div class="v">0.42<span style="font-size: 13px; color: var(--text-tertiary); font-weight: 400;">%</span></div>
+            <div class="d up" style="color: var(--status-warning);">3 tools degraded</div>
+            <svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="0,24 10,22 20,24 30,20 40,18 50,20 60,12 70,14 80,10 90,8 100,12" fill="none" stroke="#F59E0B" stroke-width="1.5"/></svg>
+          </div>
+        </div>
+
+        <!-- Tool list + side column -->
+        <div style="display: grid; grid-template-columns: 1fr 360px; gap: 16px;">
+          <div class="card">
+            <div class="card-head">
+              <h3>Your tools</h3>
+              <span class="badge badge-muted">12</span>
+              <div class="actions">
+                <button class="btn btn-ghost btn-sm"><i data-lucide="filter" class="lu"></i>Filter</button>
+                <button class="btn btn-ghost btn-sm"><i data-lucide="arrow-up-down" class="lu"></i>Sort</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="tool-row">
+                <div class="ico" style="color: var(--node-agent);"><i data-lucide="headphones" class="lu"></i></div>
+                <div class="nm"><div class="n">cs-refund-agent</div><div class="d">webhook → stripe → claude → branch · v3 prod</div></div>
+                <div class="mono">2,483 runs</div>
+                <div class="mono" style="color: var(--status-ok);">99.6%</div>
+                <svg class="mini-spark" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,15 12,14 24,16 36,10 48,12 60,8 72,10 84,6 96,8" fill="none" stroke="#6366F1" stroke-width="1.2"/></svg>
+                <span class="badge badge-ok"><span class="pulse"></span>live</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+              <div class="tool-row">
+                <div class="ico" style="color: var(--node-tool);"><i data-lucide="target" class="lu"></i></div>
+                <div class="nm"><div class="n">lead-scorer</div><div class="d">webhook → enrich → claude → salesforce · v7 prod</div></div>
+                <div class="mono">1,204 runs</div>
+                <div class="mono" style="color: var(--status-ok);">98.2%</div>
+                <svg class="mini-spark" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,12 12,15 24,10 36,14 48,8 60,12 72,6 84,10 96,8" fill="none" stroke="#06B6D4" stroke-width="1.2"/></svg>
+                <span class="badge badge-info">shadow 10%</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+              <div class="tool-row">
+                <div class="ico" style="color: var(--node-input);"><i data-lucide="calendar-clock" class="lu"></i></div>
+                <div class="nm"><div class="n">weekly-report</div><div class="d">cron(mon 9am) → 5x sql → summarize → slack · v2 prod</div></div>
+                <div class="mono">14 runs</div>
+                <div class="mono" style="color: var(--status-ok);">100%</div>
+                <svg class="mini-spark" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,14 14,14 28,14 42,14 56,12 70,12 84,10 96,10" fill="none" stroke="#10B981" stroke-width="1.2"/></svg>
+                <span class="badge badge-ok"><span class="pulse"></span>live</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+              <div class="tool-row">
+                <div class="ico" style="color: var(--node-branch);"><i data-lucide="mail-question" class="lu"></i></div>
+                <div class="nm"><div class="n">support-triage</div><div class="d">email → classify(12) → branch → tier1 | tier2 | oncall</div></div>
+                <div class="mono">8,290 runs</div>
+                <div class="mono" style="color: var(--status-warning);">94.1%</div>
+                <svg class="mini-spark" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,10 12,12 24,14 36,10 48,16 60,14 72,18 84,12 96,14" fill="none" stroke="#F59E0B" stroke-width="1.2"/></svg>
+                <span class="badge badge-warn">degraded</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+              <div class="tool-row">
+                <div class="ico" style="color: var(--node-output);"><i data-lucide="database" class="lu"></i></div>
+                <div class="nm"><div class="n">data-quality-nightly</div><div class="d">cron → 10 tables → anomaly → pagerduty · v1 draft</div></div>
+                <div class="mono">0 runs</div>
+                <div class="mono" style="color: var(--text-tertiary);">—</div>
+                <svg class="mini-spark" viewBox="0 0 100 20"></svg>
+                <span class="badge badge-muted">draft</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+              <div class="tool-row">
+                <div class="ico"><i data-lucide="sparkles" class="lu"></i></div>
+                <div class="nm"><div class="n">content-moderation</div><div class="d">api/post → classify → [safe | review | block]</div></div>
+                <div class="mono">542 runs</div>
+                <div class="mono" style="color: var(--status-ok);">99.1%</div>
+                <svg class="mini-spark" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points="0,16 12,14 24,12 36,14 48,10 60,8 72,10 84,6 96,8" fill="none" stroke="#A855F7" stroke-width="1.2"/></svg>
+                <span class="badge badge-ok"><span class="pulse"></span>live</span>
+                <i data-lucide="chevron-right" class="lu" style="color: var(--text-tertiary);"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Side column: approvals, cost, live -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="card">
+              <div class="card-head">
+                <h3>Pending approvals</h3>
+                <span class="badge badge-warn">3</span>
+              </div>
+              <div style="padding: 12px 16px;">
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; font-weight: 500;">refund $2,340</span><span class="badge badge-warn">human</span></div>
+                  <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">cs-refund-agent · 2m ago · order pi_3QR...</div>
+                </div>
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-subtle);">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; font-weight: 500;">promote v7 → prod</span><span class="badge badge-info">deploy</span></div>
+                  <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">lead-scorer · evals pass · waiting pm</div>
+                </div>
+                <div style="padding: 10px 0;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="font-size: 12px; font-weight: 500;">block user_9821</span><span class="badge badge-err">escalated</span></div>
+                  <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">content-moderation · 11m ago</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Live runs</h3>
+                <span class="badge badge-running"><span class="pulse"></span>4 active</span>
+              </div>
+              <div>
+                <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 10px;">
+                  <span class="pulse" style="width: 6px; height: 6px; border-radius: 50%; background: var(--weaver-indigo); box-shadow: 0 0 6px var(--weaver-indigo);"></span>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; font-family: var(--font-mono);">cs-refund · <span style="color:var(--weaver-cyan);">#2847</span></div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); font-family: var(--font-mono);">node.agent · 1.2s elapsed</div>
+                  </div>
+                  <span class="badge badge-running">running</span>
+                </div>
+                <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; gap: 10px;">
+                  <span class="pulse" style="width: 6px; height: 6px; border-radius: 50%; background: var(--weaver-indigo); box-shadow: 0 0 6px var(--weaver-indigo);"></span>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; font-family: var(--font-mono);">support-triage · #9124</div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); font-family: var(--font-mono);">node.tool · 400ms</div>
+                  </div>
+                  <span class="badge badge-running">running</span>
+                </div>
+                <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px;">
+                  <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--status-warning);"></span>
+                  <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 12px; font-family: var(--font-mono);">support-triage · #9120</div>
+                    <div style="font-size: 10px; color: var(--text-tertiary); font-family: var(--font-mono);">waiting_human · 3m</div>
+                  </div>
+                  <span class="badge badge-warn">hold</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <h3>Cost · by model · 7d</h3>
+              </div>
+              <div style="padding: 14px 16px;">
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;"><span style="font-family: var(--font-mono);">claude-sonnet-4-6</span><span style="font-family: var(--font-mono); color: var(--text-primary);">$28.40</span></div>
+                    <div style="height: 6px; background: var(--surface-3); border-radius: 2px; overflow: hidden;"><div style="height: 100%; width: 67%; background: var(--node-agent);"></div></div>
+                  </div>
+                  <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;"><span style="font-family: var(--font-mono);">gpt-5</span><span style="font-family: var(--font-mono); color: var(--text-primary);">$11.72</span></div>
+                    <div style="height: 6px; background: var(--surface-3); border-radius: 2px; overflow: hidden;"><div style="height: 100%; width: 28%; background: var(--weaver-cyan);"></div></div>
+                  </div>
+                  <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;"><span style="font-family: var(--font-mono);">@cf/llama-3.3 <span style="color:var(--status-ok);">free</span></span><span style="font-family: var(--font-mono); color: var(--text-primary);">$0.00</span></div>
+                    <div style="height: 6px; background: var(--surface-3); border-radius: 2px; overflow: hidden;"><div style="height: 100%; width: 5%; background: var(--status-ok);"></div></div>
+                  </div>
+                </div>
+                <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">3,284 Workers AI neurons · 0 billed to us</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 03 BUILDER ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">03</span>
+    <h2>Builder</h2>
+    <span class="path">/tools/cs-refund-agent</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/tools/cs-refund-agent</div></div>
+
+    <div class="topbar">
+      <div class="brand">
+        <svg viewBox="0 0 56 56"><path d="M8 20 C 20 20, 20 36, 32 36" stroke="#6366F1" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M8 36 C 20 36, 20 20, 32 20" stroke="#06B6D4" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M32 20 C 44 20, 44 36, 48 36" stroke="#A855F7" stroke-width="4" stroke-linecap="round" fill="none"/><path d="M32 36 C 44 36, 44 20, 48 20" stroke="#10B981" stroke-width="4" stroke-linecap="round" fill="none"/></svg>
+        Weaver
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; color: var(--text-tertiary); font-size: 12px;">
+        <span>acme-inc</span>
+        <i data-lucide="chevron-right" class="lu" style="width:10px;height:10px;"></i>
+        <span style="color: var(--text-primary); font-weight: 500;">cs-refund-agent</span>
+        <span class="badge badge-muted" style="margin-left: 6px;">v3 · draft</span>
+      </div>
+      <div class="tabs" style="margin-left: 32px;">
+        <div class="tab active">Canvas</div>
+        <div class="tab">Runs</div>
+        <div class="tab">Evals</div>
+        <div class="tab">Deploy</div>
+        <div class="tab">Settings</div>
+      </div>
+      <div class="right">
+        <span style="display: flex; align-items: center; gap: 4px;"><span class="pulse" style="width:6px;height:6px;border-radius:50%;background:var(--status-ok);"></span><span style="font-family: var(--font-mono); color: var(--status-ok);">synced</span></span>
+        <button class="btn btn-ghost btn-sm"><i data-lucide="share-2" class="lu"></i>Share</button>
+        <button class="btn btn-secondary btn-sm"><i data-lucide="play" class="lu"></i>Test run</button>
+        <button class="btn btn-primary btn-sm"><i data-lucide="rocket" class="lu"></i>Deploy</button>
+      </div>
+    </div>
+
+    <div class="builder">
+      <!-- Palette -->
+      <div class="palette">
+        <div class="ptool"><span class="dot" style="background: var(--node-input); box-shadow: 0 0 6px var(--node-input);"></span>Input</div>
+        <div class="ptool"><span class="dot" style="background: var(--node-agent); box-shadow: 0 0 6px var(--node-agent);"></span>Agent</div>
+        <div class="ptool"><span class="dot" style="background: var(--node-tool); box-shadow: 0 0 6px var(--node-tool);"></span>Tool</div>
+        <div class="ptool"><span class="dot" style="background: var(--node-branch); box-shadow: 0 0 6px var(--node-branch);"></span>Branch</div>
+        <div class="ptool"><span class="dot" style="background: var(--node-output); box-shadow: 0 0 6px var(--node-output);"></span>Output</div>
+        <div class="divider"></div>
+        <div class="ptool"><i data-lucide="message-square" class="lu" style="color:var(--weaver-indigo);"></i>NL</div>
+        <div class="ptool"><i data-lucide="git-branch" class="lu"></i>Ver</div>
+        <div class="ptool"><i data-lucide="history" class="lu"></i>Hist</div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-area" style="position: relative;">
+        <div class="canvas-topbar">
+          <div class="tool-chip">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: var(--weaver-indigo); box-shadow: 0 0 6px var(--weaver-indigo);"></span>
+            cs-refund-agent
+            <span class="v">v3</span>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">4 nodes · 3 edges · DAG ✓</span>
+          <div class="right">
+            <button class="btn btn-ghost btn-sm"><i data-lucide="square-dashed" class="lu"></i>Select</button>
+            <button class="btn btn-ghost btn-sm"><i data-lucide="hand" class="lu"></i>Pan</button>
+            <button class="btn btn-ghost btn-sm"><i data-lucide="align-justify" class="lu"></i>Auto-layout</button>
+          </div>
+        </div>
+
+        <!-- Edges SVG -->
+        <svg style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;" viewBox="0 0 1000 720" preserveAspectRatio="none">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3A3A47"/></marker>
+            <marker id="arr-run" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#6366F1"/></marker>
+          </defs>
+          <path d="M225 210 C 300 210, 300 210, 360 210" stroke="#6366F1" stroke-width="2" fill="none" marker-end="url(#arr-run)" stroke-dasharray="4 3">
+            <animate attributeName="stroke-dashoffset" from="7" to="0" dur="0.8s" repeatCount="indefinite"/>
+          </path>
+          <path d="M560 210 C 630 210, 630 210, 690 210" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+          <path d="M890 210 C 945 210, 945 210, 945 380" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+          <path d="M995 380 C 1050 380, 1050 320, 1050 260" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+          <path d="M900 400 C 920 400, 920 480, 950 480" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>
+        </svg>
+
+        <!-- Nodes -->
+        <div class="wv-node n-input" style="left: 24px; top: 172px;">
+          <span class="status-pill" style="background: var(--status-ok-soft); color: var(--status-ok);">200</span>
+          <div class="head"><span class="dot"></span><span class="kind">Input · Webhook</span></div>
+          <p class="label">refund.request</p>
+          <div class="body">auth: hmac<br>order_id, reason, amount</div>
+          <span class="port out"></span>
+          <span class="dur">12ms</span>
+        </div>
+
+        <div class="wv-node n-tool" style="left: 360px; top: 172px;">
+          <span class="status-pill" style="background: var(--weaver-indigo-soft); color: var(--weaver-indigo);"><span class="pulse"></span>LIVE</span>
+          <div class="head"><span class="dot"></span><span class="kind">Tool · Stripe</span></div>
+          <p class="label">lookup_order</p>
+          <div class="body">→ amount, created_at, status<br>retry: 3×exp</div>
+          <span class="port in"></span><span class="port out"></span>
+          <span class="dur">380ms · $0</span>
+        </div>
+
+        <div class="wv-node n-agent selected" style="left: 690px; top: 160px; min-width: 220px;">
+          <span class="status-pill" style="background: var(--node-agent-soft); color: var(--node-agent);">CLAUDE</span>
+          <div class="head"><span class="dot"></span><span class="kind">Agent</span></div>
+          <p class="label">policy_check</p>
+          <div class="body">if age &lt; 7d → approve<br>else → escalate<br>cache: enabled</div>
+          <span class="port in"></span><span class="port out"></span>
+          <span class="dur">1.24s · $0.004</span>
+        </div>
+
+        <div class="wv-node n-branch" style="left: 880px; top: 355px; min-width: 160px;">
+          <div class="head"><span class="dot"></span><span class="kind">Branch</span></div>
+          <p class="label">decision</p>
+          <div class="body">approve | escalate</div>
+          <span class="port in"></span>
+          <span class="dur">8ms</span>
+        </div>
+
+        <div class="wv-node n-output" style="left: 960px; top: 220px; min-width: 140px;">
+          <div class="head"><span class="dot"></span><span class="kind">Output · 200</span></div>
+          <p class="label">approve</p>
+          <span class="port in"></span>
+        </div>
+
+        <div class="wv-node n-tool" style="left: 960px; top: 450px; min-width: 180px;">
+          <div class="head"><span class="dot"></span><span class="kind">Tool · Slack</span></div>
+          <p class="label">notify_manager</p>
+          <span class="port in"></span>
+        </div>
+
+        <!-- Zoom -->
+        <div class="zoom-ctl">
+          <button>−</button>
+          <button>100%</button>
+          <button>+</button>
+          <button title="fit"><i data-lucide="maximize-2" class="lu" style="width:11px;height:11px;"></i></button>
+        </div>
+
+        <!-- Minimap -->
+        <div class="minimap">
+          <div class="mn" style="width: 22px; height: 12px; left: 16px; top: 42px; background: var(--node-input);"></div>
+          <div class="mn" style="width: 22px; height: 12px; left: 54px; top: 42px; background: var(--node-tool);"></div>
+          <div class="mn" style="width: 28px; height: 12px; left: 90px; top: 42px; background: var(--node-agent);"></div>
+          <div class="mn" style="width: 18px; height: 10px; left: 120px; top: 72px; background: var(--node-branch);"></div>
+          <div class="mn" style="width: 18px; height: 10px; left: 140px; top: 50px; background: var(--node-output);"></div>
+          <div class="mn" style="width: 22px; height: 10px; left: 140px; top: 92px; background: var(--node-tool);"></div>
+          <div class="viewport"></div>
+        </div>
+
+        <!-- NL composer floating -->
+        <div style="position: absolute; left: 12px; bottom: 80px; width: 420px; background: var(--surface-1); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-popover); overflow: hidden;">
+          <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="sparkles" class="lu" style="color: var(--weaver-indigo);"></i>
+            <span style="font-size: 12px; font-weight: 600;">NL Composer</span>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">⌘K</span>
+          </div>
+          <div style="padding: 14px;">
+            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--surface-2); padding: 10px 12px; border-radius: 6px; line-height: 1.55;">환불 신청이 오면 <span style="color: var(--weaver-cyan);">Stripe로 주문 조회</span>하고, <span style="color: var(--weaver-cyan);">7일 이내면 승인</span>, 아니면 <span style="color: var(--weaver-cyan);">매니저에게 Slack 알림</span>.</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+              <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">@cf/llama-3.3 · 3 nodes added · 2 edges</span>
+              <button class="btn btn-ghost btn-sm" style="margin-left: auto;">Discard</button>
+              <button class="btn btn-primary btn-sm">Apply diff</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel: Inspector / Trace -->
+      <div class="rpanel">
+        <div class="rpanel-tabs">
+          <div class="t active">Inspector</div>
+          <div class="t">Trace<span style="color: var(--weaver-indigo); margin-left: 6px;">●</span></div>
+          <div class="t">Schema</div>
+        </div>
+
+        <div class="rpanel-body">
+          <div class="rpanel-section">
+            <div class="sh"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--node-agent); box-shadow: 0 0 6px var(--node-agent);"></span>AGENT · <b>policy_check</b></div>
+            <div class="field">
+              <label>Model</label>
+              <select class="mono"><option>claude-sonnet-4-6</option></select>
+            </div>
+            <div class="field">
+              <label>System prompt</label>
+              <textarea class="mono" rows="4">You are a refund policy evaluator.
+Decide: approve or escalate.
+Strict 7-day window policy.</textarea>
+            </div>
+            <div class="field">
+              <label>User prompt · vars {{}}</label>
+              <textarea class="mono" rows="3">Order {{tool_stripe.amount}} USD,
+created {{tool_stripe.created_at}}.
+Reason: {{input.reason}}.</textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <div class="field"><label>Temperature</label><input class="mono" value="0.2"/></div>
+              <div class="field"><label>Max tokens</label><input class="mono" value="512"/></div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--surface-2); border-radius: 6px; font-size: 11px; color: var(--text-secondary);">
+              <i data-lucide="database-zap" class="lu" style="color: var(--weaver-indigo);"></i>
+              <span>Prompt cache <b style="color: var(--status-ok);">on</b> · est. <b>$0.004 / run</b></span>
+            </div>
+          </div>
+
+          <div class="rpanel-section">
+            <div class="sh">OUTPUT SCHEMA</div>
+            <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-family: var(--font-mono); font-size: 11px; line-height: 1.6; color: var(--text-secondary);">
+<span style="color: var(--weaver-cyan);">decision</span>: <span style="color: var(--node-agent);">enum</span>(approve, escalate)<br>
+<span style="color: var(--weaver-cyan);">reason</span>: <span style="color: var(--node-agent);">string</span><br>
+<span style="color: var(--weaver-cyan);">confidence</span>: <span style="color: var(--node-agent);">number</span>(0–1)
+            </div>
+          </div>
+
+          <div class="rpanel-section">
+            <div class="sh">RECENT RUNS</div>
+            <div class="trace-mini" style="margin: 0 -16px;">
+              <div class="trace-row active">
+                <div class="tn"><span class="td" style="background: var(--status-ok);"></span>#2847 · 2.1s</div>
+                <div class="dur">now</div>
+                <div class="cost">$0.0042</div>
+              </div>
+              <div class="trace-row">
+                <div class="tn"><span class="td" style="background: var(--status-ok);"></span>#2846 · 1.9s</div>
+                <div class="dur">2m</div>
+                <div class="cost">$0.0039</div>
+              </div>
+              <div class="trace-row">
+                <div class="tn"><span class="td" style="background: var(--status-error);"></span>#2845 · timeout</div>
+                <div class="dur">5m</div>
+                <div class="cost">—</div>
+              </div>
+              <div class="trace-row">
+                <div class="tn"><span class="td" style="background: var(--status-ok);"></span>#2844 · 2.3s</div>
+                <div class="dur">7m</div>
+                <div class="cost">$0.0044</div>
+              </div>
+              <div class="trace-row">
+                <div class="tn"><span class="td" style="background: var(--status-warning);"></span>#2843 · hold</div>
+                <div class="dur">9m</div>
+                <div class="cost">$0.0018</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 04 RUN DETAIL ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">04</span>
+    <h2>Run detail · Time-travel</h2>
+    <span class="path">/tools/cs-refund-agent/runs/01j7f3a2xvp4bnw</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/tools/cs-refund-agent/runs/01j7f3a2xvp4bnw</div></div>
+
+    <div style="padding: 24px 32px;">
+      <!-- Run header -->
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px;">
+        <div style="width: 32px; height: 32px; background: var(--status-ok-soft); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i data-lucide="check" class="lu" style="color: var(--status-ok); width: 16px; height: 16px;"></i></div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 style="margin: 0; font-size: 18px;">Run #2847</h2>
+            <span class="badge badge-ok">complete</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary); margin-top: 3px;">
+            trace_id <span style="color: var(--weaver-cyan);">01j7f3a2xvp4bnw</span> · cs-refund-agent v3 · 2026-04-21 14:22:08.102
+          </div>
+        </div>
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm"><i data-lucide="bookmark" class="lu"></i>Bookmark</button>
+          <button class="btn btn-secondary btn-sm"><i data-lucide="git-compare" class="lu"></i>Compare</button>
+          <button class="btn btn-primary btn-sm"><i data-lucide="history" class="lu"></i>Replay w/ edit</button>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="kpi-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 20px;">
+        <div class="kpi"><div class="lbl">Duration</div><div class="v">2.14<span style="font-size: 13px; font-weight: 400; color: var(--text-tertiary);">s</span></div></div>
+        <div class="kpi"><div class="lbl">Cost</div><div class="v">$0.0042</div></div>
+        <div class="kpi"><div class="lbl">Tokens</div><div class="v">650</div><div class="d" style="color: var(--text-tertiary);">523 in · 127 out</div></div>
+        <div class="kpi"><div class="lbl">Spans</div><div class="v">7</div></div>
+        <div class="kpi"><div class="lbl">Decision</div><div class="v" style="color: var(--status-ok); font-size: 16px;">approve</div><div class="d" style="color: var(--text-tertiary);">confidence 0.94</div></div>
+      </div>
+
+      <div class="run-layout">
+        <!-- Waterfall -->
+        <div>
+          <div class="legend">
+            <div class="lgi"><span class="d" style="background: var(--node-input);"></span>input</div>
+            <div class="lgi"><span class="d" style="background: var(--node-tool);"></span>tool</div>
+            <div class="lgi"><span class="d" style="background: var(--node-agent);"></span>agent</div>
+            <div class="lgi"><span class="d" style="background: var(--weaver-cyan);"></span>llm</div>
+            <div class="lgi"><span class="d" style="background: var(--node-branch);"></span>branch</div>
+            <div class="lgi"><span class="d" style="background: var(--node-output);"></span>output</div>
+          </div>
+          <div class="wf">
+            <div class="wf-row" style="background: var(--surface-2);">
+              <div style="font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase;">SPAN</div>
+              <div style="font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase;">TIMELINE · 2.14s</div>
+              <div style="font-size: 10px; color: var(--text-tertiary); text-align: right; letter-spacing: 0.1em;">DUR</div>
+              <div style="font-size: 10px; color: var(--text-tertiary); text-align: right; letter-spacing: 0.1em;">COST</div>
+            </div>
+            <div class="wf-row"><div class="wf-label"><span class="d" style="background: var(--surface-4);"></span>weaver.run</div><div class="bar-track"><div class="bar" style="left: 0%; width: 100%; background: var(--surface-4);"></div></div><div class="wf-dur">2140ms</div><div class="wf-cost">—</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="d" style="background: var(--node-input);"></span>node.input · Webhook</div><div class="bar-track"><div class="bar" style="left: 0%; width: 0.5%; background: var(--node-input);"></div></div><div class="wf-dur">12ms</div><div class="wf-cost">—</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="d" style="background: var(--node-tool);"></span>node.tool · stripe_lookup</div><div class="bar-track"><div class="bar" style="left: 0.5%; width: 17%; background: var(--node-tool);"></div></div><div class="wf-dur">380ms</div><div class="wf-cost">—</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="indent"></span><span class="d" style="background: var(--weaver-cyan);"></span>http.request · api.stripe.com</div><div class="bar-track"><div class="bar" style="left: 1%; width: 16%; background: var(--weaver-cyan);"></div></div><div class="wf-dur">362ms</div><div class="wf-cost">—</div></div>
+            <div class="wf-row selected"><div class="wf-label"><span class="indent"></span><span class="d" style="background: var(--node-agent);"></span>node.agent · policy_check</div><div class="bar-track"><div class="bar" style="left: 18%; width: 62%; background: var(--node-agent);"></div></div><div class="wf-dur">1320ms</div><div class="wf-cost">$0.0038</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="indent"></span><span class="d" style="background: var(--weaver-cyan);"></span>gen_ai.chat · claude-sonnet-4-6</div><div class="bar-track"><div class="bar" style="left: 19%; width: 60%; background: var(--weaver-cyan);"></div></div><div class="wf-dur">1240ms</div><div class="wf-cost">$0.0038</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="d" style="background: var(--node-branch);"></span>node.branch · decision</div><div class="bar-track"><div class="bar" style="left: 80%; width: 0.4%; background: var(--node-branch);"></div></div><div class="wf-dur">8ms</div><div class="wf-cost">—</div></div>
+            <div class="wf-row"><div class="wf-label"><span class="indent"></span><span class="d" style="background: var(--node-output);"></span>node.output · 200 OK</div><div class="bar-track"><div class="bar" style="left: 80%; width: 15%; background: var(--node-output);"></div></div><div class="wf-dur">320ms</div><div class="wf-cost">—</div></div>
+          </div>
+
+          <!-- Time-travel scrubber -->
+          <div style="margin-top: 14px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+              <i data-lucide="history" class="lu" style="color: var(--weaver-indigo);"></i>
+              <span style="font-weight: 600; font-size: 12px;">Time-travel replay</span>
+              <span style="margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">deterministic · cached LLM responses</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <button class="btn btn-secondary btn-sm"><i data-lucide="skip-back" class="lu"></i></button>
+              <button class="btn btn-primary btn-sm"><i data-lucide="play" class="lu"></i>Replay</button>
+              <div style="flex: 1; height: 6px; background: var(--surface-3); border-radius: 3px; position: relative;">
+                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 62%; background: linear-gradient(90deg, var(--weaver-indigo), var(--weaver-cyan)); border-radius: 3px;"></div>
+                <div style="position: absolute; left: 62%; top: -4px; width: 14px; height: 14px; border-radius: 50%; background: var(--weaver-indigo); box-shadow: 0 0 0 4px rgba(99,102,241,0.3);"></div>
+              </div>
+              <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);">1.32s / 2.14s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Span inspector -->
+        <div class="span-insp">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <span style="width: 8px; height: 8px; border-radius: 2px; background: var(--node-agent); box-shadow: 0 0 6px var(--node-agent);"></span>
+            <span style="font-weight: 600; font-size: 13px;">node.agent · policy_check</span>
+            <span class="badge badge-ok" style="margin-left: auto;">ok</span>
+          </div>
+
+          <div class="kv"><span class="k">span_id</span><span class="v" style="color: var(--weaver-cyan);">01j7f3a37m0k2c</span></div>
+          <div class="kv"><span class="k">gen_ai.system</span><span class="v">anthropic</span></div>
+          <div class="kv"><span class="k">gen_ai.request.model</span><span class="v">claude-sonnet-4-6</span></div>
+          <div class="kv"><span class="k">input_tokens</span><span class="v">523</span></div>
+          <div class="kv"><span class="k">output_tokens</span><span class="v">127</span></div>
+          <div class="kv"><span class="k">cache_read</span><span class="v" style="color: var(--status-ok);">450 (86%)</span></div>
+          <div class="kv"><span class="k">finish_reason</span><span class="v">end_turn</span></div>
+          <div class="kv"><span class="k">cost_usd</span><span class="v">$0.0038</span></div>
+          <div class="kv"><span class="k">weaver.byok</span><span class="v">true</span></div>
+
+          <div style="margin-top: 16px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase;">OUTPUT</div>
+          <div class="code-block"><span class="k">"decision"</span>: <span class="s">"approve"</span>,
+<span class="k">"reason"</span>: <span class="s">"order within 7-day window, $45 ≤ limit"</span>,
+<span class="k">"confidence"</span>: <span class="n">0.94</span></div>
+
+          <div style="display: flex; gap: 6px; margin-top: 8px;">
+            <button class="btn btn-secondary btn-sm"><i data-lucide="external-link" class="lu"></i>Axiom</button>
+            <button class="btn btn-secondary btn-sm"><i data-lucide="copy" class="lu"></i>Copy span</button>
+            <button class="btn btn-ghost btn-sm"><i data-lucide="flag" class="lu"></i>Flag</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 05 EVAL ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">05</span>
+    <h2>Eval</h2>
+    <span class="path">/tools/cs-refund-agent/eval</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/tools/cs-refund-agent/eval</div></div>
+
+    <div style="padding: 28px 32px;">
+      <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.01em;">Evals</h2>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">cs-refund-agent · 2 datasets · 7 assertions</span>
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm"><i data-lucide="upload" class="lu"></i>Upload dataset</button>
+          <button class="btn btn-primary btn-sm"><i data-lucide="play" class="lu"></i>Run eval</button>
+        </div>
+      </div>
+
+      <!-- Matrix: versions × datasets -->
+      <div style="margin-bottom: 24px;">
+        <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">VERSIONS × DATASETS</div>
+        <div class="eval-matrix">
+          <div class="mh">version / dataset</div>
+          <div class="mh">cs-refund-v1<br><span style="color: var(--text-tertiary); font-size: 9px;">30 cases · Q4</span></div>
+          <div class="mh">cs-refund-v2<br><span style="color: var(--text-tertiary); font-size: 9px;">45 cases · Q1</span></div>
+          <div class="mh">edge-cases<br><span style="color: var(--text-tertiary); font-size: 9px;">12 cases</span></div>
+          <div class="mh">fraud-set<br><span style="color: var(--text-tertiary); font-size: 9px;">8 cases</span></div>
+          <div class="mh">Δ cost</div>
+
+          <div style="color: var(--text-primary);">v1 <span style="color: var(--text-tertiary);">(launch)</span></div>
+          <div class="cell pass"><span class="v">86.7%</span><span class="t">$0.052 · 2.4s</span></div>
+          <div class="cell pass"><span class="v">84.4%</span><span class="t">$0.058 · 2.5s</span></div>
+          <div class="cell fail"><span class="v">58.3%</span><span class="t">$0.071 · 3.1s</span></div>
+          <div class="cell pass"><span class="v">87.5%</span><span class="t">$0.044 · 2.1s</span></div>
+          <div style="color: var(--text-tertiary);">—</div>
+
+          <div style="color: var(--text-primary);">v2</div>
+          <div class="cell pass"><span class="v">90.0%</span><span class="t">$0.048 · 2.2s</span></div>
+          <div class="cell pass"><span class="v">88.9%</span><span class="t">$0.051 · 2.3s</span></div>
+          <div class="cell soft"><span class="v">75.0%</span><span class="t">$0.062 · 2.8s</span></div>
+          <div class="cell pass"><span class="v">87.5%</span><span class="t">$0.039 · 2.0s</span></div>
+          <div style="color: var(--status-ok);">-8%</div>
+
+          <div style="color: var(--text-primary); border-top: 2px solid var(--weaver-indigo);">v3 <span class="badge badge-info" style="margin-left: 4px;">current</span></div>
+          <div class="cell pass" style="border-top: 2px solid var(--weaver-indigo);"><span class="v" style="color: var(--status-ok);">93.3%</span><span class="t">$0.042 · 2.1s</span></div>
+          <div class="cell pass" style="border-top: 2px solid var(--weaver-indigo);"><span class="v" style="color: var(--status-ok);">91.1%</span><span class="t">$0.045 · 2.2s</span></div>
+          <div class="cell soft" style="border-top: 2px solid var(--weaver-indigo);"><span class="v">83.3%</span><span class="t">$0.054 · 2.6s</span></div>
+          <div class="cell pass" style="border-top: 2px solid var(--weaver-indigo);"><span class="v">100%</span><span class="t">$0.031 · 1.9s</span></div>
+          <div style="color: var(--status-ok); border-top: 2px solid var(--weaver-indigo);">-19%</div>
+        </div>
+      </div>
+
+      <!-- Assertions + dataset -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="card">
+          <div class="card-head">
+            <h3>Assertions · v3 × cs-refund-v1</h3>
+            <span class="badge badge-ok" style="margin-left: auto;">PASS</span>
+            <span class="badge badge-warn">1 soft</span>
+          </div>
+          <div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">decision_accuracy</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">ground_truth_match · field=output.decision</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 93%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">93.3% ≥ 90%</div>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">cost_under_5_cents</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">metric_bound · max=$0.05</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 84%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">$0.042</div>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">latency_p95_under_3s</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">metric_bound · p95 ≤ 3000ms</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 71%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">2134ms</div>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">no_pii_leak</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">regex_absent · \b\d{13,16}\b</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 100%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">0</div>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">refund_amount_within_10pct</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">numeric_close · tolerance 10%</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 96%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">96%</div>
+            </div>
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="alert-triangle" class="lu" style="color: var(--status-warning);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">polite_tone</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">llm_judge · claude-sonnet-4-6 · rubric 1–3</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 77%; background: var(--status-warning); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-warning);">2.3 &lt; 2.5</div>
+            </div>
+            <div style="padding: 12px 16px; display: grid; grid-template-columns: 20px 1fr 100px 80px; gap: 12px; align-items: center;">
+              <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+              <div><div style="font-size: 12px; font-weight: 500;">no_manager_escalation_for_small_orders</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">custom · evals/custom/small-order-check.js</div></div>
+              <div style="height: 6px; background: var(--surface-3); border-radius: 2px;"><div style="height: 100%; width: 100%; background: var(--status-ok); border-radius: 2px;"></div></div>
+              <div style="font-family: var(--font-mono); font-size: 11px; text-align: right; color: var(--status-ok);">pass</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>Dataset · cs-refund-v1</h3>
+            <span class="badge badge-muted" style="margin-left: auto;">30 cases</span>
+            <button class="btn btn-ghost btn-sm"><i data-lucide="download" class="lu"></i></button>
+          </div>
+          <div class="case-list">
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-001</span><span class="inp">pi_3ABC123 · customer_request</span><span class="exp" style="color: var(--status-ok);">→ approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">within_7d</span></div>
+            <div class="case-row"><i data-lucide="x" class="lu" style="color: var(--status-error);"></i><span class="cid">case-002</span><span class="inp">pi_3DEF456 · fraud</span><span class="exp" style="color: var(--status-warning);">expected escalate, got approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">escalation</span></div>
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-003</span><span class="inp">pi_3GHI789 · defective</span><span class="exp" style="color: var(--status-ok);">→ approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">within_7d</span></div>
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-004</span><span class="inp">pi_3JKL012 · customer_request · 12d</span><span class="exp" style="color: var(--status-ok);">→ escalate</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">out_of_window</span></div>
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-005</span><span class="inp">pi_3MNO345 · duplicate</span><span class="exp" style="color: var(--status-ok);">→ approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">high_conf</span></div>
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-006</span><span class="inp">pi_3PQR678 · not_received</span><span class="exp" style="color: var(--status-ok);">→ approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">within_7d</span></div>
+            <div class="case-row"><i data-lucide="alert-triangle" class="lu" style="color: var(--status-warning);"></i><span class="cid">case-007</span><span class="inp">pi_3STU901 · wrong_item · $8</span><span class="exp" style="color: var(--status-warning);">polite_tone 2.1</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">small_order</span></div>
+            <div class="case-row"><i data-lucide="check" class="lu" style="color: var(--status-ok);"></i><span class="cid">case-008</span><span class="inp">pi_3VWX234 · late_delivery</span><span class="exp" style="color: var(--status-ok);">→ approve</span><span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">within_7d</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 06 DEPLOY ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">06</span>
+    <h2>Deploy · Shadow &amp; promote</h2>
+    <span class="path">/tools/cs-refund-agent/deploy</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/tools/cs-refund-agent/deploy</div></div>
+
+    <div style="padding: 28px 32px;">
+      <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px;">
+        <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.01em;">Deployments</h2>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">cs-refund-agent · 3 versions · shadow @ 10%</span>
+      </div>
+
+      <!-- Version track -->
+      <div class="version-track">
+        <div class="version-col prod">
+          <div class="vh">
+            <span class="v">v2</span>
+            <span class="state" style="background: var(--status-ok-soft); color: var(--status-ok);">PROD</span>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">since 12d</span>
+          </div>
+          <div class="stat-row"><span class="lbl">runs</span><span class="v">2,840</span></div>
+          <div class="stat-row"><span class="lbl">success</span><span class="v ok">98.9%</span></div>
+          <div class="stat-row"><span class="lbl">p95</span><span class="v">2.3s</span></div>
+          <div class="stat-row"><span class="lbl">avg cost</span><span class="v">$0.051</span></div>
+          <div class="stat-row"><span class="lbl">eval pass</span><span class="v ok">6/7</span></div>
+          <div style="margin-top: 14px; display: flex; gap: 6px;">
+            <button class="btn btn-ghost btn-sm" style="flex: 1;"><i data-lucide="corner-down-left" class="lu"></i>Rollback</button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; padding: 0 4px;"><i data-lucide="arrow-right" class="lu" style="color: var(--text-tertiary);"></i></div>
+
+        <div class="version-col shadow">
+          <div class="vh">
+            <span class="v" style="color: var(--weaver-indigo);">v3</span>
+            <span class="state" style="background: var(--weaver-indigo-soft); color: var(--weaver-indigo);"><span class="pulse" style="display:inline-block; width:5px; height:5px; border-radius:50%; background: currentColor; margin-right: 4px; box-shadow: 0 0 4px currentColor;"></span>SHADOW 10%</span>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">since 3d</span>
+          </div>
+          <div class="stat-row"><span class="lbl">shadow runs</span><span class="v">284</span></div>
+          <div class="stat-row"><span class="lbl">success</span><span class="v ok">99.6% <span style="color: var(--status-ok); font-size: 10px;">+0.7</span></span></div>
+          <div class="stat-row"><span class="lbl">p95</span><span class="v ok">1.8s <span style="color: var(--status-ok); font-size: 10px;">-22%</span></span></div>
+          <div class="stat-row"><span class="lbl">avg cost</span><span class="v ok">$0.042 <span style="color: var(--status-ok); font-size: 10px;">-19%</span></span></div>
+          <div class="stat-row"><span class="lbl">divergence</span><span class="v">3.2% <span style="color: var(--text-tertiary); font-size: 10px;">&lt; 5%</span></span></div>
+          <div style="margin-top: 14px; display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" style="flex: 1;"><i data-lucide="sliders" class="lu"></i>Adjust %</button>
+            <button class="btn btn-ghost btn-sm" style="flex: 1;"><i data-lucide="x" class="lu"></i>Stop</button>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; padding: 0 4px;"><i data-lucide="chevrons-right" class="lu" style="color: var(--weaver-indigo);"></i></div>
+
+        <div class="version-col">
+          <div class="vh">
+            <span class="v">v4</span>
+            <span class="state" style="background: var(--surface-3); color: var(--text-secondary);">DRAFT</span>
+            <span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">editing</span>
+          </div>
+          <div class="stat-row"><span class="lbl">changes</span><span class="v">+2 nodes · prompt</span></div>
+          <div class="stat-row"><span class="lbl">eval</span><span class="v" style="color: var(--text-tertiary);">not run</span></div>
+          <div class="stat-row"><span class="lbl">last saved</span><span class="v">4m ago</span></div>
+          <div style="margin-top: 14px; display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm" style="flex: 1;"><i data-lucide="shield-check" class="lu"></i>Run evals</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Promote gate -->
+      <div class="promote-gate">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 28px; height: 28px; background: var(--status-ok-soft); border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i data-lucide="shield-check" class="lu" style="color: var(--status-ok); width: 14px; height: 14px;"></i></div>
+          <div>
+            <div style="font-size: 14px; font-weight: 600; letter-spacing: -0.01em;">Promote v3 → prod</div>
+            <div style="font-size: 11px; color: var(--text-tertiary); font-family: var(--font-mono);">gate requires decision_accuracy + no_pii_leak on cs-refund-v1 + cs-refund-v2</div>
+          </div>
+          <div style="margin-left: auto; display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm"><i data-lucide="moon" class="lu"></i>Hold as shadow</button>
+            <button class="btn btn-primary"><i data-lucide="rocket" class="lu"></i>Promote to prod</button>
+          </div>
+        </div>
+
+        <div class="gate-checks">
+          <div class="gate-check pass">
+            <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+            <span><b>decision_accuracy</b> ≥ 90% — v3 × cs-refund-v1</span>
+            <span class="r">93.3% · pass</span>
+          </div>
+          <div class="gate-check pass">
+            <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+            <span><b>decision_accuracy</b> ≥ 90% — v3 × cs-refund-v2</span>
+            <span class="r">91.1% · pass</span>
+          </div>
+          <div class="gate-check pass">
+            <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+            <span><b>no_pii_leak</b> — both datasets</span>
+            <span class="r">0 leaks · pass</span>
+          </div>
+          <div class="gate-check pass">
+            <i data-lucide="check" class="lu" style="color: var(--status-ok);"></i>
+            <span><b>shadow divergence</b> &lt; 5% — live traffic 3d</span>
+            <span class="r">3.2% · pass</span>
+          </div>
+          <div class="gate-check soft">
+            <i data-lucide="alert-triangle" class="lu" style="color: var(--status-warning);"></i>
+            <span><b>polite_tone</b> ≥ 2.5 — v3 × cs-refund-v1 <span style="color: var(--text-tertiary); font-family: var(--font-mono); font-size: 10px;">(optional)</span></span>
+            <span class="r">2.3 · soft fail · override?</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 07 TOOL REGISTRY ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">07</span>
+    <h2>Tool registry · custom HTTP</h2>
+    <span class="path">/admin/registry/internal-users-api</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/admin/registry/internal-users-api</div></div>
+
+    <div style="padding: 28px 32px;">
+      <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.01em;">Tool registry</h2>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">24 tools · 4 built-in · 20 custom</span>
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+          <button class="btn btn-secondary btn-sm"><i data-lucide="file-json" class="lu"></i>Import OpenAPI</button>
+          <button class="btn btn-primary btn-sm"><i data-lucide="plus" class="lu"></i>New tool</button>
+        </div>
+      </div>
+
+      <div class="tool-detail-grid">
+        <div class="card">
+          <div class="card-head">
+            <div style="width: 28px; height: 28px; background: var(--node-tool-soft); border-radius: 6px; display: flex; align-items: center; justify-content: center;"><i data-lucide="wrench" class="lu" style="color: var(--node-tool); width: 14px; height: 14px;"></i></div>
+            <h3>internal-users-api</h3>
+            <span class="badge badge-muted">custom · v1.0.0</span>
+            <span class="badge badge-ok" style="margin-left: auto;"><span class="pulse"></span>healthy</span>
+          </div>
+          <div style="padding: 16px 20px;">
+            <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">Fetch user records from the internal user service. Used by 3 agents (cs-refund-agent, support-triage, lead-scorer).</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+              <div style="background: var(--surface-2); border-radius: 6px; padding: 10px 12px;">
+                <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px;">BASE URL</div>
+                <div style="font-family: var(--font-mono); font-size: 12px;">https://users.internal.example.com</div>
+              </div>
+              <div style="background: var(--surface-2); border-radius: 6px; padding: 10px 12px;">
+                <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px;">AUTH</div>
+                <div style="font-family: var(--font-mono); font-size: 12px;">bearer · <span style="color: var(--weaver-cyan);">USER_API_TOKEN</span></div>
+              </div>
+            </div>
+
+            <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">ENDPOINTS · 3</div>
+            <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+              <div style="padding: 10px 14px; display: grid; grid-template-columns: 60px 1fr 80px; gap: 12px; align-items: center; border-bottom: 1px solid var(--border);">
+                <span class="badge badge-info" style="background: var(--status-info-soft); justify-content: center;">GET</span>
+                <span style="font-family: var(--font-mono); font-size: 12px;">/users/:user_id</span>
+                <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-align: right;">get_user</span>
+              </div>
+              <div style="padding: 10px 14px; display: grid; grid-template-columns: 60px 1fr 80px; gap: 12px; align-items: center; border-bottom: 1px solid var(--border);">
+                <span class="badge" style="background: rgba(16,185,129,0.14); color: var(--status-ok); justify-content: center;">POST</span>
+                <span style="font-family: var(--font-mono); font-size: 12px;">/users/search</span>
+                <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-align: right;">search</span>
+              </div>
+              <div style="padding: 10px 14px; display: grid; grid-template-columns: 60px 1fr 80px; gap: 12px; align-items: center;">
+                <span class="badge" style="background: rgba(245,158,11,0.14); color: var(--status-warning); justify-content: center;">PATCH</span>
+                <span style="font-family: var(--font-mono); font-size: 12px;">/users/:user_id</span>
+                <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); text-align: right;">update</span>
+              </div>
+            </div>
+
+            <div style="margin-top: 20px; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px;">SCHEMA · get_user</div>
+            <div class="schema-block">{
+  <span class="k">"input"</span>: {
+    <span class="k">"user_id"</span>: <span class="ty">string</span>, <span style="color: var(--text-tertiary);">// ULID</span>
+  },
+  <span class="k">"output"</span>: {
+    <span class="k">"id"</span>: <span class="ty">string</span>,
+    <span class="k">"email"</span>: <span class="ty">string</span>,
+    <span class="k">"name"</span>: <span class="ty">string</span>,
+    <span class="k">"plan"</span>: <span class="ty">enum</span>(<span class="s">"free"</span>, <span class="s">"pro"</span>, <span class="s">"enterprise"</span>),
+    <span class="k">"created_at"</span>: <span class="ty">datetime</span>
+  }
+}</div>
+          </div>
+        </div>
+
+        <!-- Sidebar: scopes, usage, recent calls -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div class="card">
+            <div class="card-head"><h3>Scopes</h3></div>
+            <div style="padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); border-radius: 6px; font-size: 12px;">
+                <i data-lucide="key" class="lu" style="color: var(--status-info);"></i>
+                <span style="font-family: var(--font-mono);">users:read</span>
+                <span class="badge badge-muted" style="margin-left: auto;">HMAC</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: var(--surface-2); border-radius: 6px; font-size: 12px;">
+                <i data-lucide="key" class="lu" style="color: var(--status-warning);"></i>
+                <span style="font-family: var(--font-mono);">users:write</span>
+                <span class="badge badge-warn" style="margin-left: auto;">approval</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Usage · 7d</h3></div>
+            <div style="padding: 14px 16px;">
+              <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: 600; margin-bottom: 8px;"><span>14,281</span><span style="font-size: 12px; color: var(--status-ok); font-family: var(--font-mono);">p95 · 140ms</span></div>
+              <svg viewBox="0 0 200 40" style="width: 100%; height: 40px;" preserveAspectRatio="none">
+                <polyline points="0,30 20,28 40,32 60,24 80,20 100,25 120,18 140,22 160,14 180,16 200,10" fill="none" stroke="#06B6D4" stroke-width="1.5"/>
+                <polyline points="0,30 20,28 40,32 60,24 80,20 100,25 120,18 140,22 160,14 180,16 200,10 200,40 0,40" fill="url(#usageFill)" opacity="0.2"/>
+                <defs><linearGradient id="usageFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#06B6D4"/><stop offset="1" stop-color="#06B6D4" stop-opacity="0"/></linearGradient></defs>
+              </svg>
+              <div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary); margin-top: 8px;">Apr 14 → Apr 21</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Used by</h3></div>
+            <div style="padding: 8px 0;">
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--node-agent);"></span><span style="font-size: 12px; font-family: var(--font-mono);">cs-refund-agent</span><span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">v3</span></div>
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--node-branch);"></span><span style="font-size: 12px; font-family: var(--font-mono);">support-triage</span><span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">v5</span></div>
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--node-tool);"></span><span style="font-size: 12px; font-family: var(--font-mono);">lead-scorer</span><span style="margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">v7</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ 08 ADMIN ════════════════════════ -->
+<div class="screen">
+  <div class="screen-head">
+    <span class="num">08</span>
+    <h2>Admin · Members &amp; audit</h2>
+    <span class="path">/admin</span>
+  </div>
+  <div class="screen-body">
+  <div class="device">
+    <div class="device-chrome"><div class="dots"><span></span><span></span><span></span></div><div class="url">weaver.pages.dev/admin</div></div>
+
+    <div style="padding: 28px 32px;">
+      <div style="display: flex; align-items: baseline; gap: 16px; margin-bottom: 20px;">
+        <h2 style="margin: 0; font-size: 20px; letter-spacing: -0.01em;">Admin</h2>
+        <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">acme-inc · 9 members · 3 roles</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 380px; gap: 16px;">
+        <div class="card">
+          <div class="card-head">
+            <h3>Members</h3>
+            <span class="badge badge-muted">9</span>
+            <div class="actions">
+              <button class="btn btn-ghost btn-sm"><i data-lucide="search" class="lu"></i></button>
+              <button class="btn btn-primary btn-sm"><i data-lucide="user-plus" class="lu"></i>Invite</button>
+            </div>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Member</th><th>Role</th><th>Last active</th><th>Tools</th><th></th></tr></thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px;">JP</div>
+                    <div><div style="font-size: 12px; font-weight: 500;">박진희</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="137776653d637261783d797a7d7b667a53747e727a7f3d707c7e">[email&#160;protected]</a></div></div>
+                  </div>
+                </td>
+                <td><span class="role-chip role-admin">Admin</span></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">now</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">12</td>
+                <td style="text-align: right;"><i data-lucide="more-vertical" class="lu" style="color: var(--text-tertiary);"></i></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: linear-gradient(135deg, #06B6D4, #10B981);">HK</div>
+                    <div><div style="font-size: 12px; font-weight: 500;">김해인</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a3cbc2c6cacde3c2c0cec68dcacdc0">[email&#160;protected]</a></div></div>
+                  </div>
+                </td>
+                <td><span class="role-chip role-editor">Editor</span></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">2m ago</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">7</td>
+                <td style="text-align: right;"><i data-lucide="more-vertical" class="lu" style="color: var(--text-tertiary);"></i></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: linear-gradient(135deg, #F59E0B, #EF4444);">MK</div>
+                    <div><div style="font-size: 12px; font-weight: 500;">Mikael Karlsson</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6f02042f0e0c020a4106010c">[email&#160;protected]</a></div></div>
+                  </div>
+                </td>
+                <td><span class="role-chip role-editor">Editor</span></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">12m</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">4</td>
+                <td style="text-align: right;"><i data-lucide="more-vertical" class="lu" style="color: var(--text-tertiary);"></i></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: linear-gradient(135deg, #A855F7, #6366F1);">JS</div>
+                    <div><div style="font-size: 12px; font-weight: 500;">조선우</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3c564f7c5d5f51591255525f">[email&#160;protected]</a> · cs team</div></div>
+                  </div>
+                </td>
+                <td><span class="role-chip role-viewer">Viewer</span></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">1h</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">—</td>
+                <td style="text-align: right;"><i data-lucide="more-vertical" class="lu" style="color: var(--text-tertiary);"></i></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: linear-gradient(135deg, #10B981, #06B6D4);">AR</div>
+                    <div><div style="font-size: 12px; font-weight: 500;">Aria Romero</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="95f4e7fcf4d5f4f6f8f0bbfcfbf6">[email&#160;protected]</a> · revops</div></div>
+                  </div>
+                </td>
+                <td><span class="role-chip role-editor">Editor</span></td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">4h</td>
+                <td style="font-family: var(--font-mono); font-size: 11px;">3</td>
+                <td style="text-align: right;"><i data-lucide="more-vertical" class="lu" style="color: var(--text-tertiary);"></i></td>
+              </tr>
+              <tr>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 28px; height: 28px; font-size: 11px; background: var(--surface-3); color: var(--text-secondary);">+4</div>
+                    <div><div style="font-size: 12px; font-weight: 500; color: var(--text-tertiary);">4 more</div></div>
+                  </div>
+                </td>
+                <td></td><td></td><td></td><td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Budget -->
+          <div class="card">
+            <div class="card-head"><h3>Usage &amp; budget</h3><span class="badge badge-ok" style="margin-left: auto;">23% used</span></div>
+            <div style="padding: 16px;">
+              <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-size: 20px; font-weight: 600;">$42.18</span>
+                <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">of $180 / mo</span>
+              </div>
+              <div style="height: 8px; background: var(--surface-3); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; width: 23%; background: linear-gradient(90deg, var(--weaver-indigo), var(--weaver-cyan)); border-radius: 4px;"></div>
+              </div>
+              <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px; font-family: var(--font-mono);">
+                <div style="color: var(--text-tertiary);">LLM · $39.88</div>
+                <div style="color: var(--text-tertiary); text-align: right;">Tools · $2.30</div>
+                <div style="color: var(--status-ok);">Workers AI · free</div>
+                <div style="color: var(--status-ok); text-align: right;">Axiom · 142/500GB</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit log -->
+          <div class="card">
+            <div class="card-head"><h3>Audit log</h3><button class="btn btn-ghost btn-sm" style="margin-left: auto;"><i data-lucide="external-link" class="lu"></i></button></div>
+            <div style="font-family: var(--font-mono); font-size: 11px;">
+              <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 10px;">
+                <span style="color: var(--text-tertiary); white-space: nowrap;">14:22</span>
+                <div style="flex: 1;"><span style="color: var(--text-primary);">haein</span> · <span style="color: var(--weaver-cyan);">promote</span> cs-refund-agent v3 → prod</div>
+              </div>
+              <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 10px;">
+                <span style="color: var(--text-tertiary); white-space: nowrap;">13:58</span>
+                <div style="flex: 1;"><span style="color: var(--text-primary);">mk</span> · <span style="color: var(--weaver-cyan);">edit</span> lead-scorer v7 prompt</div>
+              </div>
+              <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 10px;">
+                <span style="color: var(--text-tertiary); white-space: nowrap;">13:12</span>
+                <div style="flex: 1;"><span style="color: var(--text-primary);">aria</span> · <span style="color: var(--status-warning);">approve</span> refund $2,340</div>
+              </div>
+              <div style="padding: 10px 16px; border-bottom: 1px solid var(--border-subtle); display: flex; gap: 10px;">
+                <span style="color: var(--text-tertiary); white-space: nowrap;">11:04</span>
+                <div style="flex: 1;"><span style="color: var(--text-primary);">park</span> · <span style="color: var(--weaver-cyan);">invite</span> <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e081928981a081838d85ce898e83">[email&#160;protected]</a> as Editor</div>
+              </div>
+              <div style="padding: 10px 16px; display: flex; gap: 10px;">
+                <span style="color: var(--text-tertiary); white-space: nowrap;">09:30</span>
+                <div style="flex: 1;"><span style="color: var(--text-primary);">park</span> · <span style="color: var(--status-error);">rotate</span> USER_API_TOKEN</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- BYOK keys -->
+          <div class="card">
+            <div class="card-head"><h3>BYOK keys</h3><button class="btn btn-ghost btn-sm" style="margin-left: auto;"><i data-lucide="plus" class="lu"></i></button></div>
+            <div style="padding: 8px 0;">
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle);">
+                <i data-lucide="key" class="lu" style="color: var(--node-agent);"></i>
+                <div style="flex: 1;"><div style="font-size: 12px; font-weight: 500;">Anthropic</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">sk-ant-api03-••••k8fm</div></div>
+                <span class="badge badge-ok">active</span>
+              </div>
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-subtle);">
+                <i data-lucide="key" class="lu" style="color: var(--status-ok);"></i>
+                <div style="flex: 1;"><div style="font-size: 12px; font-weight: 500;">OpenAI</div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">sk-proj-••••9xq2</div></div>
+                <span class="badge badge-ok">active</span>
+              </div>
+              <div style="padding: 10px 16px; display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="cloud" class="lu" style="color: var(--weaver-indigo);"></i>
+                <div style="flex: 1;"><div style="font-size: 12px; font-weight: 500;">Workers AI <span style="color: var(--status-ok); font-family: var(--font-mono); font-size: 10px;">free</span></div><div style="font-family: var(--font-mono); font-size: 10px; color: var(--text-tertiary);">3,284 / 10,000 neurons · 7d</div></div>
+                <span class="badge badge-info">shared</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="sep"></div>
+
+<div style="max-width: 1440px; margin: 0 auto; padding: 32px 48px 80px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; color: var(--text-tertiary);">
+  <span>Weaver / Wireframes · 01 signin → 08 admin · 2026 W17 draft</span>
+  <span>Tokens from <a href="Weaver Design System.html" style="color: var(--weaver-cyan);">tokens.css</a></span>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

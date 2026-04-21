@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1440" />
+<title>Weaver — Design System</title>
+<link rel="stylesheet" href="tokens.css" />
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg-base); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  body { font-size: var(--fs-base); line-height: var(--lh-normal); }
+
+  /* ── Page scaffold ───────────────────────────────────────── */
+  .page { max-width: 1280px; margin: 0 auto; padding: 80px 48px 160px; }
+  .hero { border-bottom: 1px solid var(--border); padding-bottom: 64px; margin-bottom: 80px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 80px; align-items: end; }
+  .hero .eyebrow { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); text-transform: uppercase; margin-bottom: 24px; display: flex; gap: 16px; align-items: center; }
+  .hero .eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--text-tertiary); }
+  .hero h1 { font-family: var(--font-display); font-weight: 600; font-size: 64px; letter-spacing: var(--tracking-tighter); line-height: 1.02; margin: 0 0 20px; }
+  .hero h1 em { font-style: normal; color: var(--weaver-indigo); font-weight: 500; }
+  .hero .lede { color: var(--text-secondary); font-size: var(--fs-lg); max-width: 560px; line-height: 1.55; margin: 0; }
+  .hero .meta { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-tertiary); display: flex; flex-direction: column; gap: 8px; }
+  .hero .meta div { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 6px; }
+  .hero .meta span:last-child { color: var(--text-primary); }
+
+  /* ── Section ─────────────────────────────────────────────── */
+  section { margin-bottom: 96px; }
+  .section-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .section-head .num { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-tertiary); }
+  .section-head h2 { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: var(--tracking-tight); margin: 0; }
+  .section-head .sub { margin-left: auto; font-size: var(--fs-sm); color: var(--text-tertiary); font-family: var(--font-mono); }
+
+  .grid { display: grid; gap: 16px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .grid-6 { grid-template-columns: repeat(6, 1fr); }
+  .grid-2-1 { grid-template-columns: 2fr 1fr; }
+
+  /* ── Card ────────────────────────────────────────────────── */
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 24px; }
+  .card-tight { padding: 16px; }
+  .card .label { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); text-transform: uppercase; margin-bottom: 8px; }
+  .card h3 { font-size: var(--fs-md); font-weight: 600; margin: 0 0 12px; }
+
+  /* ── Swatch ──────────────────────────────────────────────── */
+  .swatch { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .swatch .fill { height: 88px; border-bottom: 1px solid var(--border); }
+  .swatch .info { padding: 12px 14px; }
+  .swatch .name { font-size: var(--fs-md); font-weight: 500; margin-bottom: 4px; }
+  .swatch .hex { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary); text-transform: lowercase; }
+  .swatch .use { font-size: var(--fs-xs); color: var(--text-secondary); margin-top: 8px; line-height: 1.4; }
+
+  /* ── Type specimen ───────────────────────────────────────── */
+  .type-row { display: grid; grid-template-columns: 180px 1fr 140px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid var(--border); gap: 32px; }
+  .type-row:last-child { border-bottom: none; }
+  .type-meta { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary); display: flex; flex-direction: column; gap: 4px; }
+  .type-meta b { color: var(--text-primary); font-weight: 500; font-size: var(--fs-sm); }
+  .type-spec { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary); text-align: right; }
+
+  /* ── Node (canvas primitives) ────────────────────────────── */
+  .wv-node { background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 12px 14px; min-width: 200px; position: relative; box-shadow: var(--shadow-card); font-family: var(--font-sans); }
+  .wv-node .head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .wv-node .dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+  .wv-node .kind { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-tertiary); font-weight: 500; }
+  .wv-node .label { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); margin: 0; letter-spacing: var(--tracking-tight); }
+  .wv-node .body { font-size: var(--fs-xs); color: var(--text-secondary); font-family: var(--font-mono); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .wv-node .port { position: absolute; width: 10px; height: 10px; border-radius: var(--radius-full); background: var(--surface-4); border: 2px solid var(--surface-2); top: 50%; transform: translateY(-50%); }
+  .wv-node .port.in { left: -6px; }
+  .wv-node .port.out { right: -6px; }
+  .wv-node.n-input { border-color: color-mix(in srgb, var(--node-input) 40%, var(--border-strong)); }
+  .wv-node.n-input .dot { background: var(--node-input); box-shadow: 0 0 8px var(--node-input); }
+  .wv-node.n-input .port.out { background: var(--node-input); border-color: var(--surface-2); }
+  .wv-node.n-agent { border-color: color-mix(in srgb, var(--node-agent) 40%, var(--border-strong)); }
+  .wv-node.n-agent .dot { background: var(--node-agent); box-shadow: 0 0 8px var(--node-agent); }
+  .wv-node.n-agent .port { background: var(--node-agent); }
+  .wv-node.n-tool { border-color: color-mix(in srgb, var(--node-tool) 40%, var(--border-strong)); }
+  .wv-node.n-tool .dot { background: var(--node-tool); box-shadow: 0 0 8px var(--node-tool); }
+  .wv-node.n-tool .port { background: var(--node-tool); }
+  .wv-node.n-branch { border-color: color-mix(in srgb, var(--node-branch) 40%, var(--border-strong)); }
+  .wv-node.n-branch .dot { background: var(--node-branch); box-shadow: 0 0 8px var(--node-branch); }
+  .wv-node.n-branch .port { background: var(--node-branch); }
+  .wv-node.n-output { border-color: color-mix(in srgb, var(--node-output) 40%, var(--border-strong)); }
+  .wv-node.n-output .dot { background: var(--node-output); box-shadow: 0 0 8px var(--node-output); }
+  .wv-node.n-output .port.in { background: var(--node-output); border-color: var(--surface-2); }
+  .wv-node.selected { box-shadow: var(--shadow-node-selected); }
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-sans); font-size: var(--fs-md); font-weight: 500; line-height: 1; padding: 9px 14px; border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer; transition: all var(--dur-fast) var(--ease-out); letter-spacing: var(--tracking-tight); }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--weaver-indigo); color: #fff; }
+  .btn-primary:hover { background: var(--weaver-indigo-hover); }
+  .btn-secondary { background: var(--surface-3); color: var(--text-primary); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--surface-4); }
+  .btn-ghost { background: transparent; color: var(--text-secondary); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--text-primary); }
+  .btn-danger { background: var(--status-error-soft); color: var(--status-error); border-color: color-mix(in srgb, var(--status-error) 30%, transparent); }
+  .btn-danger:hover { background: color-mix(in srgb, var(--status-error) 20%, transparent); }
+  .btn-sm { padding: 6px 10px; font-size: var(--fs-sm); }
+  .btn svg { width: 14px; height: 14px; stroke-width: 1.75; }
+
+  /* ── Badges ──────────────────────────────────────────────── */
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 500; padding: 3px 8px; border-radius: var(--radius-sm); letter-spacing: 0; text-transform: none; }
+  .badge-ok { background: var(--status-ok-soft); color: var(--status-ok); }
+  .badge-err { background: var(--status-error-soft); color: var(--status-error); }
+  .badge-warn { background: var(--status-warning-soft); color: var(--status-warning); }
+  .badge-info { background: var(--status-info-soft); color: var(--status-info); }
+  .badge-running { background: var(--weaver-indigo-soft); color: var(--weaver-indigo); }
+  .badge-muted { background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border); }
+  .badge .pulse { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; box-shadow: 0 0 6px currentColor; }
+  .badge-running .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ── Inputs ──────────────────────────────────────────────── */
+  .input, .select, .textarea { width: 100%; background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 9px 12px; font-family: var(--font-sans); font-size: var(--fs-md); transition: all var(--dur-fast) var(--ease-out); }
+  .input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--weaver-indigo); box-shadow: var(--shadow-focus-ring); }
+  .input::placeholder { color: var(--text-tertiary); }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: var(--fs-sm); color: var(--text-secondary); font-weight: 500; }
+  .field .hint { font-size: var(--fs-xs); color: var(--text-tertiary); font-family: var(--font-mono); }
+  .mono-input { font-family: var(--font-mono); font-size: var(--fs-sm); }
+
+  /* ── Trace waterfall ─────────────────────────────────────── */
+  .trace { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; font-family: var(--font-mono); font-size: var(--fs-xs); }
+  .trace-head { display: grid; grid-template-columns: 260px 1fr 90px 80px; padding: 10px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); color: var(--text-tertiary); font-size: var(--fs-micro); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+  .trace-row { display: grid; grid-template-columns: 260px 1fr 90px 80px; padding: 8px 16px; border-bottom: 1px solid var(--border-subtle); align-items: center; }
+  .trace-row:hover { background: var(--surface-2); }
+  .trace-label { display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
+  .trace-label .indent { width: 12px; flex-shrink: 0; }
+  .trace-label .dot { width: 6px; height: 6px; border-radius: var(--radius-full); }
+  .trace-bar-track { position: relative; height: 18px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .trace-bar { position: absolute; height: 100%; border-radius: 2px; }
+  .trace-cost { color: var(--text-secondary); text-align: right; }
+  .trace-dur { color: var(--text-tertiary); text-align: right; }
+
+  /* ── Radii + shadow preview ─────────────────────────────── */
+  .radii-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .radii-cell { text-align: center; }
+  .radii-cell .box { background: var(--surface-3); border: 1px solid var(--border); height: 64px; margin-bottom: 8px; }
+  .radii-cell .meta { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary); }
+  .radii-cell .meta b { color: var(--text-primary); font-weight: 500; display: block; margin-bottom: 2px; font-size: var(--fs-sm); }
+
+  .shadow-cell { background: var(--surface-1); border-radius: var(--radius-xl); padding: 32px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .shadow-cell .ex { width: 100px; height: 100px; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  .shadow-cell .meta { text-align: center; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary); }
+  .shadow-cell .meta b { color: var(--text-primary); font-weight: 500; display: block; margin-bottom: 2px; font-size: var(--fs-sm); }
+
+  /* ── Spacing ruler ───────────────────────────────────────── */
+  .spacing-list { display: flex; flex-direction: column; gap: 12px; }
+  .spacing-row { display: grid; grid-template-columns: 80px 1fr 60px; align-items: center; gap: 16px; font-family: var(--font-mono); font-size: var(--fs-xs); }
+  .spacing-row .name { color: var(--text-primary); font-weight: 500; }
+  .spacing-row .bar { height: 14px; background: var(--weaver-indigo); border-radius: 2px; }
+  .spacing-row .px { color: var(--text-tertiary); text-align: right; }
+
+  /* ── Brand wordmark ──────────────────────────────────────── */
+  .wordmark { font-family: var(--font-display); font-weight: 600; font-size: 64px; letter-spacing: var(--tracking-tighter); color: var(--text-primary); display: inline-flex; align-items: center; gap: 14px; }
+  .wordmark .glyph { display: inline-block; }
+
+  /* ── Canvas snapshot (hero preview) ──────────────────────── */
+  .canvas-preview { position: relative; background: var(--bg-canvas); background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0);
+    background-size: 24px 24px;
+    border: 1px solid var(--border); border-radius: var(--radius-2xl); padding: 40px; height: 420px; overflow: hidden; }
+  .canvas-preview .flow { position: relative; height: 100%; }
+  .canvas-preview .wv-node { position: absolute; }
+  .canvas-preview svg.edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* ── Utility ─────────────────────────────────────────────── */
+  .hstack { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .vstack { display: flex; flex-direction: column; gap: 12px; }
+  .mono { font-family: var(--font-mono); }
+  .tc { color: var(--text-tertiary); }
+  .sc { color: var(--text-secondary); }
+  .kicker { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--text-tertiary); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+
+  /* ── Panel strip (trace viewer style) ────────────────────── */
+  .panel-strip { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-xl); overflow: hidden; }
+  .panel-strip .strip-head { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); gap: 12px; font-size: var(--fs-sm); }
+  .panel-strip .strip-head .title { font-weight: 600; letter-spacing: var(--tracking-tight); }
+  .panel-strip .strip-body { padding: 16px; }
+
+  /* Cost heatmap row */
+  .heatmap-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .heatmap-row .lbl { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); width: 160px; flex-shrink: 0; }
+  .heatmap-row .cells { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; flex: 1; }
+  .heatmap-row .cells div { height: 14px; border-radius: 2px; background: var(--surface-3); }
+  .heatmap-row .total { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-primary); width: 60px; text-align: right; }
+
+  /* Eval result row */
+  .eval-row { display: grid; grid-template-columns: 24px 1fr 160px 100px; gap: 16px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); font-size: var(--fs-sm); }
+  .eval-row:last-child { border-bottom: none; }
+  .eval-row .check { width: 16px; height: 16px; }
+  .eval-row .name { color: var(--text-primary); font-weight: 500; }
+  .eval-row .bar-wrap { height: 6px; background: var(--surface-3); border-radius: 2px; overflow: hidden; }
+  .eval-row .bar-wrap .bar { height: 100%; background: var(--status-ok); border-radius: 2px; }
+  .eval-row .val { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-secondary); text-align: right; }
+  .eval-row.fail .bar-wrap .bar { background: var(--status-warning); }
+
+  /* table of contents */
+  .toc { position: sticky; top: 24px; font-family: var(--font-mono); font-size: var(--fs-xs); display: flex; flex-direction: column; gap: 6px; }
+  .toc a { color: var(--text-tertiary); text-decoration: none; padding: 4px 8px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; transition: all var(--dur-fast); }
+  .toc a:hover { color: var(--text-primary); background: var(--surface-2); }
+  .toc a span:last-child { opacity: 0.5; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<!-- ── Hero ───────────────────────────────────────────── -->
+<div class="hero">
+  <div>
+    <div class="eyebrow">Weaver / Design System · v0.1 draft · 2026 W17</div>
+    <h1>하나의 직물로 엮인<br>에이전트 · 툴 · <em>관측성</em>.</h1>
+    <p class="lede">개발자 친화 · 진지 · 장인 감성. 다크 퍼스트 개발자 툴, 단일 indigo 악센트. Retool의 밀도와 Linear의 침착함을 AI 에이전트 워크플로우 시대로 가져옵니다.</p>
+  </div>
+  <div class="meta">
+    <div><span>ACCENT</span><span>#6366F1 indigo</span></div>
+    <div><span>BASE</span><span>#030305 near-black</span></div>
+    <div><span>TYPE</span><span>Inter · JetBrains Mono</span></div>
+    <div><span>GRID</span><span>4 px</span></div>
+    <div><span>MODE</span><span>dark · dawn</span></div>
+    <div><span>SURFACES</span><span>6 (canvas · builder · trace · eval · deploy · admin)</span></div>
+  </div>
+</div>
+
+<!-- ── 1. Canvas preview (the product at a glance) ─────── -->
+<section>
+  <div class="section-head">
+    <span class="num">01</span>
+    <h2>Canvas at a glance</h2>
+    <span class="sub">xyflow · 5 node primitives · 1 edge type</span>
+  </div>
+  <div class="canvas-preview">
+    <div class="flow">
+      <svg class="edges" viewBox="0 0 1160 340" preserveAspectRatio="none">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3A3A47"/></marker>
+        </defs>
+        <path d="M230 90 C 290 90, 290 90, 350 90" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+        <path d="M570 90 C 630 90, 630 90, 690 90" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+        <path d="M910 90 C 945 90, 945 90, 945 160" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+        <path d="M910 90 C 945 90, 945 90, 945 50 L 1000 50" stroke="#3A3A47" stroke-width="1.5" fill="none" marker-end="url(#arrow)" />
+      </svg>
+      <div class="wv-node n-input" style="left: 20px; top: 58px;">
+        <div class="head"><span class="dot"></span><span class="kind">Input · Webhook</span></div>
+        <p class="label">refund.request</p>
+        <div class="body">hmac · order_id, reason</div>
+        <span class="port out"></span>
+      </div>
+      <div class="wv-node n-tool" style="left: 350px; top: 58px;">
+        <div class="head"><span class="dot"></span><span class="kind">Tool · Stripe</span></div>
+        <p class="label">lookup_order</p>
+        <div class="body">stripe.amount, status</div>
+        <span class="port in"></span><span class="port out"></span>
+      </div>
+      <div class="wv-node n-agent selected" style="left: 690px; top: 58px;">
+        <div class="head"><span class="dot"></span><span class="kind">Agent · Claude 4.6</span></div>
+        <p class="label">policy_check</p>
+        <div class="body">if created &lt; 7d → approve<br>else → escalate</div>
+        <span class="port in"></span><span class="port out"></span>
+      </div>
+      <div class="wv-node n-branch" style="left: 860px; top: 210px; min-width: 140px;">
+        <div class="head"><span class="dot"></span><span class="kind">Branch</span></div>
+        <p class="label">decision</p>
+        <span class="port in"></span>
+      </div>
+      <div class="wv-node n-output" style="left: 1000px; top: 10px; min-width: 140px;">
+        <div class="head"><span class="dot"></span><span class="kind">Output · 200</span></div>
+        <p class="label">approve</p>
+        <span class="port in"></span>
+      </div>
+    </div>
+  </div>
+  <div class="hstack" style="margin-top: 12px;">
+    <span class="kicker">Canvas backdrop · 24 px dot grid · rgba(255,255,255,0.05)</span>
+    <span style="margin-left: auto;" class="kicker">5 types · 1 accent · edges at border-strong</span>
+  </div>
+</section>
+
+<!-- ── 2. Color ────────────────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">02</span>
+    <h2>Color</h2>
+    <span class="sub">one brand accent · 5 node types · 4 status</span>
+  </div>
+
+  <h3 class="kicker" style="margin-bottom: 12px;">Brand</h3>
+  <div class="grid grid-4" style="margin-bottom: 32px;">
+    <div class="swatch"><div class="fill" style="background: var(--weaver-indigo);"></div><div class="info"><div class="name">Indigo 500</div><div class="hex">#6366F1</div><div class="use">Primary CTA · logo · focus ring · running state.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--weaver-cyan);"></div><div class="info"><div class="name">Cyan 500</div><div class="hex">#06B6D4</div><div class="use">Accent. Selection border · link hover · trace id.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--bg-base);"></div><div class="info"><div class="name">Near-black</div><div class="hex">#030305</div><div class="use">App background. Not pure black — sits ½ stop above.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--surface-1);"></div><div class="info"><div class="name">Surface 1</div><div class="hex">#0F0F14</div><div class="use">Cards · panels · trace viewer.</div></div></div>
+  </div>
+
+  <h3 class="kicker" style="margin-bottom: 12px;">Surfaces &amp; text</h3>
+  <div class="grid grid-6" style="margin-bottom: 32px;">
+    <div class="swatch"><div class="fill" style="background: var(--surface-2);"></div><div class="info"><div class="name">Surface 2</div><div class="hex">#1A1A22</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--surface-3);"></div><div class="info"><div class="name">Surface 3</div><div class="hex">#22222D</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--surface-4);"></div><div class="info"><div class="name">Surface 4</div><div class="hex">#2A2A35</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--text-primary);"></div><div class="info"><div class="name">Text 1</div><div class="hex">#F0F0F0</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--text-secondary);"></div><div class="info"><div class="name">Text 2</div><div class="hex">#AAAAAA</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--text-tertiary);"></div><div class="info"><div class="name">Text 3</div><div class="hex">#666666</div></div></div>
+  </div>
+
+  <h3 class="kicker" style="margin-bottom: 12px;">Node type palette</h3>
+  <div class="grid grid-5" style="margin-bottom: 32px;">
+    <div class="swatch"><div class="fill" style="background: var(--node-input);"></div><div class="info"><div class="name">Input</div><div class="hex">#3B82F6</div><div class="use">Webhooks · schedules · manual triggers.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--node-agent);"></div><div class="info"><div class="name">Agent</div><div class="hex">#A855F7</div><div class="use">LLM node. Claude · GPT · Workers AI.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--node-tool);"></div><div class="info"><div class="name">Tool</div><div class="hex">#10B981</div><div class="use">HTTP · SQL · Slack · Stripe · custom.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--node-branch);"></div><div class="info"><div class="name">Branch</div><div class="hex">#F59E0B</div><div class="use">Expression or LLM-classifier split.</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--node-output);"></div><div class="info"><div class="name">Output</div><div class="hex">#EF4444</div><div class="use">HTTP response · webhook · return value.</div></div></div>
+  </div>
+
+  <h3 class="kicker" style="margin-bottom: 12px;">Status</h3>
+  <div class="grid grid-4">
+    <div class="swatch"><div class="fill" style="background: var(--status-ok);"></div><div class="info"><div class="name">OK</div><div class="hex">#10B981</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--status-error);"></div><div class="info"><div class="name">Error</div><div class="hex">#EF4444</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--status-warning);"></div><div class="info"><div class="name">Warning</div><div class="hex">#F59E0B</div></div></div>
+    <div class="swatch"><div class="fill" style="background: var(--status-running); box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3px var(--weaver-indigo-ring);"></div><div class="info"><div class="name">Running</div><div class="hex">#6366F1</div><div class="use">Indigo w/ pulse. Live trace row.</div></div></div>
+  </div>
+</section>
+
+<!-- ── 3. Typography ────────────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">03</span>
+    <h2>Typography</h2>
+    <span class="sub">Inter variable · JetBrains Mono · display 40px cap in product</span>
+  </div>
+  <div style="background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 32px 40px;">
+    <div class="type-row">
+      <div class="type-meta"><b>Display</b><span>Inter 600 · -0.02em</span></div>
+      <div style="font-family: var(--font-display); font-weight: 600; font-size: 48px; letter-spacing: -0.02em; line-height: 1.05;">Weave agents, tools, and observability.</div>
+      <div class="type-spec">48 / 1.05<br>-0.02em</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Heading / h1</b><span>Inter 600 · -0.01em</span></div>
+      <div style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em;">CS Refund Agent · v3</div>
+      <div class="type-spec">24 / 1.25<br>-0.01em</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Heading / h2</b><span>Inter 600</span></div>
+      <div style="font-size: 18px; font-weight: 600; letter-spacing: -0.01em;">Trace · Run #2847</div>
+      <div class="type-spec">18 / 1.35</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Body</b><span>Inter 400</span></div>
+      <div style="font-size: 14px; line-height: 1.5;">환불 신청을 받으면 주문을 조회하고, 7일 이내면 승인, 아니면 매니저에게 Slack 알림을 보냅니다. 4개 노드가 자동 생성됩니다.</div>
+      <div class="type-spec">14 / 1.5</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Body dense</b><span>Inter 400 · builder</span></div>
+      <div style="font-size: 13px; line-height: 1.5; color: var(--text-secondary);">Canvas labels, prompt editor, node bodies. Denser than Office's 14px to fit more span detail on a trace row.</div>
+      <div class="type-spec">13 / 1.5</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Label</b><span>Inter 500</span></div>
+      <div style="font-size: 12px; font-weight: 500;">Model · Temperature · Max tokens</div>
+      <div class="type-spec">12 / 1.35</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Kicker</b><span>Mono 500 · 0.1em · UC</span></div>
+      <div style="font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-tertiary);">OBSERVABILITY · SPAN · TOOL</div>
+      <div class="type-spec">10 / 1.0<br>UC · 0.1em</div>
+    </div>
+    <div class="type-row">
+      <div class="type-meta"><b>Code / trace</b><span>JetBrains Mono</span></div>
+      <div style="font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary);">span_id: 01j7f3a2x · LLM 420ms · $0.003 · 523→127 tok</div>
+      <div class="type-spec">13 / 1.5 mono</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 4. Spacing, radius, shadow ──────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">04</span>
+    <h2>Spacing · Radius · Shadow</h2>
+    <span class="sub">4 px grid · minimal elevation · no glow</span>
+  </div>
+
+  <div class="grid grid-2-1" style="gap: 32px; align-items: start;">
+    <div class="card">
+      <div class="label">Spacing — 4 px base</div>
+      <div class="spacing-list">
+        <div class="spacing-row"><span class="name">space-1</span><span class="bar" style="width: 4px;"></span><span class="px">4px</span></div>
+        <div class="spacing-row"><span class="name">space-2</span><span class="bar" style="width: 8px;"></span><span class="px">8px</span></div>
+        <div class="spacing-row"><span class="name">space-3</span><span class="bar" style="width: 12px;"></span><span class="px">12px</span></div>
+        <div class="spacing-row"><span class="name">space-4</span><span class="bar" style="width: 16px;"></span><span class="px">16px</span></div>
+        <div class="spacing-row"><span class="name">space-6</span><span class="bar" style="width: 24px;"></span><span class="px">24px</span></div>
+        <div class="spacing-row"><span class="name">space-8</span><span class="bar" style="width: 32px;"></span><span class="px">32px</span></div>
+        <div class="spacing-row"><span class="name">space-12</span><span class="bar" style="width: 48px;"></span><span class="px">48px</span></div>
+        <div class="spacing-row"><span class="name">space-16</span><span class="bar" style="width: 64px;"></span><span class="px">64px</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Motion</div>
+      <div class="vstack">
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">dur-instant</span><span class="mono">80ms</span></div>
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">dur-fast <b style="color: var(--weaver-indigo); font-weight: 500;">· base</b></span><span class="mono">150ms</span></div>
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">dur-base</span><span class="mono">200ms</span></div>
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">dur-slow</span><span class="mono">300ms</span></div>
+        <div style="height: 1px; background: var(--border); margin: 4px 0;"></div>
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">ease-out</span><span class="mono">(0.16,1,0.3,1)</span></div>
+        <div class="hstack" style="justify-content: space-between;"><span class="mono tc">active-press</span><span class="mono">scale 0.98</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 24px;"></div>
+  <div class="card">
+    <div class="label">Corner radius</div>
+    <div class="radii-row">
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-xs);"></div><div class="meta"><b>xs</b>4px · chips inside chips</div></div>
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-sm);"></div><div class="meta"><b>sm</b>6px · badges</div></div>
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-md);"></div><div class="meta"><b>md</b>8px · buttons · inputs</div></div>
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-lg);"></div><div class="meta"><b>lg</b>10px · nodes</div></div>
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-xl);"></div><div class="meta"><b>xl</b>12px · cards</div></div>
+      <div class="radii-cell"><div class="box" style="border-radius: var(--radius-2xl);"></div><div class="meta"><b>2xl</b>16px · dialogs</div></div>
+    </div>
+  </div>
+
+  <div style="height: 24px;"></div>
+  <div class="grid grid-3">
+    <div class="shadow-cell"><div class="ex" style="box-shadow: var(--shadow-card);"></div><div class="meta"><b>card</b>resting — nodes, cards</div></div>
+    <div class="shadow-cell"><div class="ex" style="box-shadow: var(--shadow-raised);"></div><div class="meta"><b>raised</b>dropdown · popover</div></div>
+    <div class="shadow-cell"><div class="ex" style="box-shadow: var(--shadow-node-selected);"></div><div class="meta"><b>selected</b>2px indigo ring + soft glow</div></div>
+  </div>
+</section>
+
+<!-- ── 5. Node primitives ──────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">05</span>
+    <h2>Node primitives</h2>
+    <span class="sub">specs/node-types.md · 5 types · DAG enforced</span>
+  </div>
+  <div class="grid grid-5">
+    <div class="wv-node n-input">
+      <div class="head"><span class="dot"></span><span class="kind">Input</span></div>
+      <p class="label">Webhook</p>
+      <div class="body">trigger: hmac<br>schema: order.v1</div>
+      <span class="port out"></span>
+    </div>
+    <div class="wv-node n-agent">
+      <div class="head"><span class="dot"></span><span class="kind">Agent</span></div>
+      <p class="label">Claude Sonnet 4.6</p>
+      <div class="body">tool_choice: auto<br>cache: on</div>
+      <span class="port in"></span><span class="port out"></span>
+    </div>
+    <div class="wv-node n-tool">
+      <div class="head"><span class="dot"></span><span class="kind">Tool</span></div>
+      <p class="label">stripe.lookup</p>
+      <div class="body">scope: stripe:read<br>retry: 3 × exp</div>
+      <span class="port in"></span><span class="port out"></span>
+    </div>
+    <div class="wv-node n-branch">
+      <div class="head"><span class="dot"></span><span class="kind">Branch</span></div>
+      <p class="label">within_7d?</p>
+      <div class="body">expr: order.age &lt; 7d<br>outputs: 2</div>
+      <span class="port in"></span>
+    </div>
+    <div class="wv-node n-output">
+      <div class="head"><span class="dot"></span><span class="kind">Output</span></div>
+      <p class="label">200 OK</p>
+      <div class="body">kind: http_response<br>schema: refund.resp</div>
+      <span class="port in"></span>
+    </div>
+  </div>
+  <p class="sc" style="margin-top: 20px; max-width: 720px; font-size: var(--fs-sm);">All nodes share the same shell: 40%-saturated border matched to the node type, 8 px type dot with a soft halo, mono uppercase kicker, semibold label, and a dashed meta line for the 2-row prompt/schema preview. Selected state adds a 2 px indigo ring + glow.</p>
+</section>
+
+<!-- ── 6. Components: buttons, badges, inputs ─────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">06</span>
+    <h2>Components</h2>
+    <span class="sub">buttons · badges · inputs · controls</span>
+  </div>
+
+  <div class="grid grid-2-1" style="align-items: start;">
+    <div class="card">
+      <div class="label">Buttons</div>
+      <div class="hstack" style="margin-bottom: 16px;">
+        <button class="btn btn-primary"><i data-lucide="play"></i>Run agent</button>
+        <button class="btn btn-secondary"><i data-lucide="git-branch"></i>New version</button>
+        <button class="btn btn-ghost"><i data-lucide="history"></i>History</button>
+        <button class="btn btn-danger"><i data-lucide="trash-2"></i>Delete</button>
+      </div>
+      <div class="hstack">
+        <button class="btn btn-primary btn-sm"><i data-lucide="rocket"></i>Promote to prod</button>
+        <button class="btn btn-secondary btn-sm"><i data-lucide="moon"></i>Shadow 10%</button>
+        <button class="btn btn-ghost btn-sm"><i data-lucide="plus"></i>Add node</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Badges</div>
+      <div class="hstack">
+        <span class="badge badge-ok"><i class="pulse"></i>PASS</span>
+        <span class="badge badge-err">FAIL</span>
+        <span class="badge badge-warn">SOFT</span>
+        <span class="badge badge-running"><span class="pulse"></span>RUNNING</span>
+        <span class="badge badge-info">SHADOW</span>
+        <span class="badge badge-muted">v3 · draft</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 24px;"></div>
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="label">Input</div>
+      <div class="field" style="margin-bottom: 12px;">
+        <label>Tool id</label>
+        <input class="input mono-input" value="cs-refund-agent" />
+        <span class="hint">kebab-case · unique per org</span>
+      </div>
+      <div class="field">
+        <label>Focus state</label>
+        <input class="input" placeholder="focused ring 3px @ indigo 35%" autofocus />
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Select / model</div>
+      <div class="field">
+        <label>Model</label>
+        <select class="select mono-input">
+          <option>claude-sonnet-4-6</option>
+          <option>gpt-5</option>
+          <option>@cf/llama-3.3-70b</option>
+        </select>
+        <span class="hint">Workers AI free · BYOK overrides</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Textarea · prompt</div>
+      <textarea class="textarea mono-input" rows="4">환불 신청이 들어오면 주문을 조회하고 7일 이내인지 판단해 approve 또는 escalate 중 하나를 결정한다.
+
+{{input.order_id}} {{input.reason}}</textarea>
+    </div>
+  </div>
+</section>
+
+<!-- ── 7. Trace viewer ─────────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">07</span>
+    <h2>Trace &amp; observability</h2>
+    <span class="sub">OTEL GenAI · Axiom Free 500GB · SSE stream</span>
+  </div>
+
+  <div class="panel-strip" style="margin-bottom: 24px;">
+    <div class="strip-head">
+      <i data-lucide="activity" style="width:14px; height: 14px; color: var(--weaver-indigo);"></i>
+      <span class="title">Run #2847</span>
+      <span class="mono tc">trace_id <span style="color: var(--weaver-cyan);">01j7f3a2xvp4bnw</span></span>
+      <span style="margin-left: auto;" class="hstack">
+        <span class="badge badge-ok"><span class="pulse"></span>complete</span>
+        <span class="mono sc">2.14s · $0.0042 · 650 tok</span>
+      </span>
+    </div>
+    <div class="trace" style="border: none; border-radius: 0;">
+      <div class="trace-head"><span>SPAN</span><span>TIMELINE</span><span>DUR</span><span>COST</span></div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="dot" style="background: var(--node-input);"></span><span>weaver.run</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 0%; width: 100%; background: var(--surface-4);"></div></div>
+        <div class="trace-dur">2140ms</div><div class="trace-cost">—</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="dot" style="background: var(--node-input);"></span><span>node.input</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 0%; width: 2%; background: var(--node-input);"></div></div>
+        <div class="trace-dur">12ms</div><div class="trace-cost">—</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="dot" style="background: var(--node-tool);"></span><span>node.tool · stripe_lookup</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 2%; width: 18%; background: var(--node-tool);"></div></div>
+        <div class="trace-dur">380ms</div><div class="trace-cost">—</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="dot" style="background: var(--node-agent);"></span><span>node.agent · policy_check</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 20%; width: 62%; background: var(--node-agent);"></div></div>
+        <div class="trace-dur">1320ms</div><div class="trace-cost">$0.0038</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="indent"></span><span class="dot" style="background: var(--weaver-cyan);"></span><span>gen_ai.chat · claude-sonnet-4-6</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 22%; width: 58%; background: var(--weaver-cyan);"></div></div>
+        <div class="trace-dur">1240ms</div><div class="trace-cost">$0.0038</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="dot" style="background: var(--node-branch);"></span><span>node.branch · decision</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 82%; width: 3%; background: var(--node-branch);"></div></div>
+        <div class="trace-dur">8ms</div><div class="trace-cost">—</div>
+      </div>
+      <div class="trace-row">
+        <div class="trace-label"><span class="indent"></span><span class="dot" style="background: var(--node-output);"></span><span>node.output · 200</span></div>
+        <div class="trace-bar-track"><div class="trace-bar" style="left: 85%; width: 15%; background: var(--node-output);"></div></div>
+        <div class="trace-dur">320ms</div><div class="trace-cost">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-strip">
+    <div class="strip-head">
+      <i data-lucide="flame" style="width:14px; height: 14px; color: var(--status-warning);"></i>
+      <span class="title">Cost heatmap</span>
+      <span class="mono tc">last 7d · by node · 20 buckets</span>
+    </div>
+    <div class="strip-body">
+      <div class="heatmap-row">
+        <span class="lbl">agent.policy_check</span>
+        <div class="cells" id="hm1"></div>
+        <span class="total">$3.24</span>
+      </div>
+      <div class="heatmap-row">
+        <span class="lbl">tool.stripe_lookup</span>
+        <div class="cells" id="hm2"></div>
+        <span class="total">$0.00</span>
+      </div>
+      <div class="heatmap-row">
+        <span class="lbl">agent.summarize</span>
+        <div class="cells" id="hm3"></div>
+        <span class="total">$1.08</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 8. Eval results ─────────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">08</span>
+    <h2>Eval gate</h2>
+    <span class="sub">specs/eval-dsl.md · assertion table · deploy gate</span>
+  </div>
+  <div class="panel-strip">
+    <div class="strip-head">
+      <i data-lucide="shield-check" style="width:14px; height: 14px; color: var(--status-ok);"></i>
+      <span class="title">cs-refund-agent · v3 × cs-refund-v1 (30 cases)</span>
+      <span style="margin-left: auto;" class="hstack">
+        <span class="badge badge-ok">PASS</span>
+        <span class="badge badge-warn">1 soft</span>
+        <span class="mono sc">42s · $1.26 total</span>
+      </span>
+    </div>
+    <div>
+      <div class="eval-row">
+        <i data-lucide="check" class="check" style="color: var(--status-ok);"></i>
+        <span class="name">decision_accuracy</span>
+        <div class="bar-wrap"><div class="bar" style="width: 93%;"></div></div>
+        <span class="val">93.3% ≥ 90%</span>
+      </div>
+      <div class="eval-row">
+        <i data-lucide="check" class="check" style="color: var(--status-ok);"></i>
+        <span class="name">cost_under_5_cents</span>
+        <div class="bar-wrap"><div class="bar" style="width: 84%;"></div></div>
+        <span class="val">$0.042 ≤ $0.050</span>
+      </div>
+      <div class="eval-row">
+        <i data-lucide="check" class="check" style="color: var(--status-ok);"></i>
+        <span class="name">latency_p95_under_3s</span>
+        <div class="bar-wrap"><div class="bar" style="width: 71%;"></div></div>
+        <span class="val">2134ms ≤ 3000ms</span>
+      </div>
+      <div class="eval-row">
+        <i data-lucide="check" class="check" style="color: var(--status-ok);"></i>
+        <span class="name">no_pii_leak</span>
+        <div class="bar-wrap"><div class="bar" style="width: 100%;"></div></div>
+        <span class="val">0 leaks</span>
+      </div>
+      <div class="eval-row fail">
+        <i data-lucide="alert-triangle" class="check" style="color: var(--status-warning);"></i>
+        <span class="name">polite_tone <span class="tc mono" style="font-size: 10px; margin-left: 6px;">· llm_judge</span></span>
+        <div class="bar-wrap"><div class="bar" style="width: 92%;"></div></div>
+        <span class="val">2.3 / 2.5 soft</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 9. Brand wordmark ───────────────────────────────── -->
+<section>
+  <div class="section-head">
+    <span class="num">09</span>
+    <h2>Brand</h2>
+    <span class="sub">wordmark · 3 glyph concepts · OSS tone</span>
+  </div>
+
+  <div class="card" style="padding: 48px; margin-bottom: 24px;">
+    <div class="wordmark">
+      <!-- Glyph A: woven knot -->
+      <svg class="glyph" width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <path d="M8 20 C 20 20, 20 36, 32 36" stroke="#6366F1" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M8 36 C 20 36, 20 20, 32 20" stroke="#06B6D4" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M32 20 C 44 20, 44 36, 48 36" stroke="#A855F7" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <path d="M32 36 C 44 36, 44 20, 48 20" stroke="#10B981" stroke-width="3" stroke-linecap="round" fill="none"/>
+      </svg>
+      Weaver
+    </div>
+    <p class="sc" style="max-width: 640px; margin: 24px 0 0; font-size: var(--fs-md);">Wordmark in Inter 600 at -0.02em tracking, paired with the "woven threads" glyph. Four strands — indigo · cyan · purple · emerald — cross in a knot, recalling Canvas + Runtime + Observability + Eval meeting at a single point.</p>
+  </div>
+
+  <div class="grid grid-3">
+    <div class="card" style="text-align: center; padding: 32px;">
+      <div class="label" style="text-align: left;">A · Woven knot</div>
+      <svg width="120" height="120" viewBox="0 0 120 120" style="margin-top: 16px;">
+        <path d="M20 42 C 44 42, 44 78, 68 78" stroke="#6366F1" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <path d="M20 78 C 44 78, 44 42, 68 42" stroke="#06B6D4" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <path d="M52 42 C 76 42, 76 78, 100 78" stroke="#A855F7" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <path d="M52 78 C 76 78, 76 42, 100 42" stroke="#10B981" stroke-width="4" stroke-linecap="round" fill="none"/>
+      </svg>
+      <div class="sc" style="margin-top: 16px; font-size: var(--fs-sm);">Four strands cross at a node.<br>Primary mark.</div>
+    </div>
+    <div class="card" style="text-align: center; padding: 32px;">
+      <div class="label" style="text-align: left;">B · Geometric W</div>
+      <svg width="120" height="120" viewBox="0 0 120 120" style="margin-top: 16px;">
+        <path d="M16 30 L40 90" stroke="#3B82F6" stroke-width="5" stroke-linecap="round"/>
+        <path d="M40 90 L60 40" stroke="#A855F7" stroke-width="5" stroke-linecap="round"/>
+        <path d="M60 40 L80 90" stroke="#10B981" stroke-width="5" stroke-linecap="round"/>
+        <path d="M80 90 L104 30" stroke="#F59E0B" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+      <div class="sc" style="margin-top: 16px; font-size: var(--fs-sm);">W split into 4 colored strokes — echoes node type palette.</div>
+    </div>
+    <div class="card" style="text-align: center; padding: 32px;">
+      <div class="label" style="text-align: left;">C · Loom circle</div>
+      <svg width="120" height="120" viewBox="0 0 120 120" style="margin-top: 16px;">
+        <circle cx="60" cy="60" r="44" stroke="#2A2A35" stroke-width="1.5" fill="none"/>
+        <path d="M30 42 Q 60 70 90 42" stroke="#6366F1" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M30 78 Q 60 50 90 78" stroke="#06B6D4" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M30 60 Q 60 30 90 60" stroke="#A855F7" stroke-width="2.5" fill="none" stroke-linecap="round" opacity="0.6"/>
+      </svg>
+      <div class="sc" style="margin-top: 16px; font-size: var(--fs-sm);">Three threads weaving inside a ring. Subtlest.</div>
+    </div>
+  </div>
+
+  <div style="height: 24px;"></div>
+  <div class="card">
+    <div class="label">Voice</div>
+    <div class="grid grid-2-1" style="grid-template-columns: 1fr 1fr;">
+      <div>
+        <div class="kicker" style="color: var(--status-ok); margin-bottom: 8px;">DO</div>
+        <p style="margin: 0; font-size: var(--fs-md); line-height: 1.6;">Weaver is an open-source platform where AI agents are the unit of internal tools. Every run is a trace. Every deploy is gated by evals.</p>
+      </div>
+      <div>
+        <div class="kicker" style="color: var(--status-error); margin-bottom: 8px;">DON'T</div>
+        <p style="margin: 0; font-size: var(--fs-md); line-height: 1.6; color: var(--text-tertiary);">🚀🚀 Super awesome AI agent builder with magic ✨ that just works!</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────────────── -->
+<div style="border-top: 1px solid var(--border); padding-top: 32px; margin-top: 96px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-tertiary);">
+  <span>Weaver / Design System · distilled from /docs + /specs + /brand</span>
+  <span>Maintained by 박진희 · <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="91f5f4e7bfe1f0e3fabffbf8fff9e4f8d1f6fcf0f8fdbff2fefc">[email&#160;protected]</a></span>
+</div>
+
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // Heatmap cells
+  const tiers = [
+    'rgba(99,102,241,0.12)','rgba(99,102,241,0.22)','rgba(99,102,241,0.35)',
+    'rgba(99,102,241,0.55)','rgba(99,102,241,0.78)','rgba(99,102,241,1.0)'
+  ];
+  function fillHeatmap(id, weights) {
+    const el = document.getElementById(id);
+    weights.forEach(w => {
+      const c = document.createElement('div');
+      c.style.background = w === 0 ? 'var(--surface-3)' : tiers[Math.min(5, Math.floor(w * 5))];
+      el.appendChild(c);
+    });
+  }
+  fillHeatmap('hm1', [0.1,0.2,0.15,0.3,0.45,0.4,0.6,0.85,0.9,1.0,0.7,0.5,0.35,0.3,0.4,0.55,0.7,0.6,0.5,0.4]);
+  fillHeatmap('hm2', Array(20).fill(0));
+  fillHeatmap('hm3', [0,0,0,0,0.1,0.2,0.3,0.35,0.4,0.3,0.2,0.15,0.1,0.2,0.3,0.4,0.5,0.45,0.35,0.2]);
+
+  lucide.createIcons();
+</script>
+
+</body>
+</html>

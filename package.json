@@ -1,0 +1,35 @@
+{
+  "name": "weaver-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Weaver — AI agents as the unit of internal tools",
+  "license": "Apache-2.0",
+  "author": "박진희 (JinhuiStudy) <dev.park.jinhui@gmail.com>",
+  "homepage": "https://weaver.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/getweaver/weaver.git"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter=./apps/web dev",
+    "test": "pnpm -r test",
+    "test:run": "pnpm -r test:run",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "typescript": "^5.9.0"
+  }
+}
