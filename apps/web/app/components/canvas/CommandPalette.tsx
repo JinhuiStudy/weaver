@@ -188,13 +188,13 @@ export function CommandPalette({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop captures click-outside to dismiss; keyboard dismissal is handled via window-level Escape in the input's onKeyDown.
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh] backdrop-blur-sm"
       role="dialog"
       aria-label="Command palette"
       aria-modal="true"
       onMouseDown={(e) => {
-        // Click outside → close. The inner card stops propagation.
         if (e.target === e.currentTarget) onClose();
       }}
       onKeyDown={(e) => {
