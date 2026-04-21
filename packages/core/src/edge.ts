@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { Node, NodeType } from "./node.ts";
+import type { Node, NodeType } from "./node";
 
 export const EdgeSchema = v.object({
   id: v.string(),

@@ -1,7 +1,9 @@
+import { isConnectionAllowed, type NodeType } from "@weaver/core";
 import {
   Background,
   BackgroundVariant,
   Controls,
+  type IsValidConnection,
   MiniMap,
   type OnSelectionChangeFunc,
   ReactFlow,
@@ -43,6 +45,21 @@ function NodeCanvasInner() {
   const addNode = useCanvas((s) => s.addNode);
   const setSelection = useCanvas((s) => s.setSelection);
 
+  // Enforce the @weaver/core connection matrix (specs/node-types.md §엣지 규칙).
+  // xyflow invokes this on hover during a drag; returning false suppresses the
+  // green connect indicator and refuses the drop. The param is typed as
+  // `Edge | Connection` (reconnect scenarios) — both share `source`/`target`.
+  const isValidConnection = useCallback<IsValidConnection>(
+    (conn) => {
+      if (!conn.source || !conn.target || conn.source === conn.target) return false;
+      const source = nodes.find((n) => n.id === conn.source);
+      const target = nodes.find((n) => n.id === conn.target);
+      if (!source?.type || !target?.type) return false;
+      return isConnectionAllowed(source.type as NodeType, target.type as NodeType);
+    },
+    [nodes],
+  );
+
   const handleSelectionChange = useCallback<OnSelectionChangeFunc>(
     ({ nodes: selectedNodes }) => {
       setSelection(selectedNodes[0]?.id ?? null);
@@ -82,6 +99,7 @@ function NodeCanvasInner() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
         fitView

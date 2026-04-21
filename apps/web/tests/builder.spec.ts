@@ -197,6 +197,70 @@ test("Backspace also deletes the selected node (macOS-style)", async ({ page }) 
   });
 });
 
+/**
+ * Core connection matrix (specs/node-types.md §엣지 규칙) disallows a handful of
+ * shapes — most importantly `branch → branch` and `agent → input`. xyflow gives
+ * us `isValidConnection` to refuse the drop at hit-test time, and that wire-up
+ * lives in NodeCanvas. If anyone regresses it the guardrail vanishes silently,
+ * so we assert it at the ReactFlow edge-count level.
+ */
+test("disallowed connections (branch→branch) are refused", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const allEdges = page.locator(".react-flow__edge");
+  const baselineEdges = await allEdges.count();
+
+  // Seed has exactly one branch. Add a second one from the palette so we can
+  // try to wire branch → branch.
+  const secondBranchTarget = { x: 900, y: 500 };
+  // Fire a synthetic HTML5 DnD on the ReactFlow wrapper because Playwright's
+  // .dragTo() does not trigger the dataTransfer payload our palette writes.
+  await page.evaluate(
+    ({ target, mime }) => {
+      const canvas = document.querySelector<HTMLElement>(".react-flow__renderer");
+      if (!canvas) throw new Error("react-flow__renderer not found");
+      const dt = new DataTransfer();
+      dt.setData(mime, "branch");
+      const opts: DragEventInit = {
+        bubbles: true,
+        cancelable: true,
+        clientX: target.x,
+        clientY: target.y,
+        dataTransfer: dt,
+      };
+      const wrapper = canvas.closest<HTMLElement>("[onDragOver], .h-full.w-full") ?? canvas;
+      wrapper.dispatchEvent(new DragEvent("dragover", opts));
+      wrapper.dispatchEvent(new DragEvent("drop", opts));
+    },
+    { target: secondBranchTarget, mime: "application/x-weaver-node-kind" },
+  );
+  await page.waitForTimeout(200);
+  await expect(page.locator(".wv-node.n-branch")).toHaveCount(2);
+
+  await page.screenshot({
+    path: "tests/screenshots/60-two-branches.png",
+    fullPage: false,
+  });
+
+  // Attempt the disallowed connection: drag the first branch's "approve" source
+  // handle onto the second branch's target handle.
+  const firstBranch = page.locator(".wv-node.n-branch").first();
+  const secondBranch = page.locator(".wv-node.n-branch").last();
+  const sourceHandle = firstBranch.locator(".react-flow__handle-right").first();
+  const targetHandle = secondBranch.locator(".react-flow__handle-left").first();
+
+  await sourceHandle.dragTo(targetHandle);
+  await page.waitForTimeout(300);
+
+  // Edge count unchanged — the guard rejected the drop.
+  await expect(allEdges).toHaveCount(baselineEdges);
+  await page.screenshot({
+    path: "tests/screenshots/61-branch-to-branch-rejected.png",
+    fullPage: false,
+  });
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

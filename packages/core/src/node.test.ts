@@ -10,7 +10,7 @@ import {
   OutputNodeSchema,
   parseNode,
   ToolNodeSchema,
-} from "./node.ts";
+} from "./node";
 
 const baseFields = (overrides: Partial<{ id: string; label: string }> = {}) => ({
   id: overrides.id ?? "01J000000000000000000000",

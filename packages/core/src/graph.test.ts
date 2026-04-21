@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findCycle, findIsolatedNodes, type Graph, parseGraph, validateGraph } from "./graph.ts";
-import type { Node } from "./node.ts";
+import { findCycle, findIsolatedNodes, type Graph, parseGraph, validateGraph } from "./graph";
+import type { Node } from "./node";
 
 const nodeOf = (id: string, type: Node["type"]): Node => {
   const base = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type Edge, isConnectionAllowed, validateEdge } from "./edge.ts";
-import type { Node } from "./node.ts";
+import { type Edge, isConnectionAllowed, validateEdge } from "./edge";
+import type { Node } from "./node";
 
 const nodes: Node[] = [
   {

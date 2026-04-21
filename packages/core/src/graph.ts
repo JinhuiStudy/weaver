@@ -1,6 +1,6 @@
 import * as v from "valibot";
-import { type EdgeError, EdgeSchema, validateEdge } from "./edge.ts";
-import { NodeSchema } from "./node.ts";
+import { type EdgeError, EdgeSchema, validateEdge } from "./edge";
+import { NodeSchema } from "./node";
 
 export const GraphSchema = v.object({
   version: v.literal(1),

@@ -17,6 +17,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@weaver/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@xyflow/react':
         specifier: ^12
         version: 12.10.2(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
