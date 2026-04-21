@@ -188,12 +188,12 @@ export function CommandPalette({
   };
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop captures click-outside to dismiss; keyboard dismissal is handled via window-level Escape in the input's onKeyDown.
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[15vh] backdrop-blur-sm"
       role="dialog"
       aria-label="Command palette"
       aria-modal="true"
+      // biome-ignore lint/a11y/noStaticElementInteractions: backdrop captures click-outside to dismiss; keyboard dismissal is handled via window-level Escape in the input's onKeyDown.
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -204,10 +204,9 @@ export function CommandPalette({
         }
       }}
     >
-      <div
-        className="w-[520px] max-w-[90vw] overflow-hidden rounded-[12px] border border-border-strong bg-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-        onMouseDown={(e) => e.stopPropagation()}
-      >
+      {/* No onMouseDown needed — outer div's `target === currentTarget`
+          check already ensures clicks bubbling from here don't dismiss. */}
+      <div className="w-[520px] max-w-[90vw] overflow-hidden rounded-[12px] border border-border-strong bg-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
         <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
           <Search className="lu" />
           <input
