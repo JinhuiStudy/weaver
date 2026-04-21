@@ -1,58 +1,66 @@
 # Weaver
 
-> **AI 에이전트를 내부툴의 원자 단위로 만드는 오픈소스 플랫폼**
-> Weave agents, tools, and observability into one fabric.
-> **$0 — 고정 월 비용 없이 런칭 가능한 풀 엣지 스택.**
+> **Fork agents. Rate them. They evolve. Free forever.**
+> 공개 에이전트 네트워크 — 당신이 좋아요를 누르면 에이전트가 진화합니다.
 
 ---
 
 ## 한 문장
 
-자연어로 내부툴을 만들면, 그 툴은 **AI 에이전트 워크플로우**로 돌아가고, 모든 실행은 **자동으로 trace·비용·eval**이 붙는다. **전부 무료 tier만으로.**
+**AI 에이전트를 만들고 공유하고 포크하고 진화시키는 오픈 네트워크.** 유저도, 운영자도, 영원히 **$0**.
 
-## 왜
+## 왜 이것인가 (2026년 AI agent 시장의 공백)
 
-| 기존 | 문제 |
-|---|---|
-| **Retool** | AI-native 아님. 에이전트는 외부 호출. 유료 ($10~50/유저) |
-| **v0.dev / Bolt** | UI만 생성. 런타임·관측·eval 없음. 유료 |
-| **Langfuse / Braintrust** | 관측만. 제품 만들지 못함 |
-| **n8n / Zapier** | 자동화 중심, 에이전트 일등 시민 아님 |
+| 기존 | 장점 | 공백 |
+|---|---|---|
+| **LangGraph / Mastra** | 개발자 프레임워크 | 개발자 아닌 유저는 접근 불가 · 공유 어려움 |
+| **Custom GPTs / Claude Projects** | 개인 agent 제작 | 벤더 잠금 · fork 제한 · $20+/월 |
+| **Dify / Flowise** | OSS 시각 빌더 | agent = 외딴 프로젝트, 커뮤니티 없음 |
+| **Langfuse / Helicone** | 관측성 | 제품 못 만듦 |
+| **Retool AI** | 엔터프라이즈 | $10-50/유저 · 개인/취미 접근 불가 |
 
-**Weaver**는 "에이전트 = 내부툴의 단위"라는 테제로 이 네 공백을 한 제품으로 차지한다. 그리고 **MVP까지 $0**.
+**Weaver** = **agent 가 소셜 미디어처럼 공유되고 진화하는 첫 네트워크**. 4개 차별점:
+
+1. **공개 URL** — 모든 agent 는 `weaver.dev/@user/agent-slug` 공유 가능
+2. **Fork + Genealogy** — CodePen 처럼 원작을 포크 · 포크 트리 시각화
+3. **Auto-evolution** — Weaver 가 자동으로 더 나은 프롬프트를 제안 (👍/👎 기반)
+4. **영원 무료** — Workers AI 공유 pool + 유저당 일일 cap · BYOK 는 옵션 (ADR-006)
 
 ## 제품 모습 (30초 데모)
 
-1. CS 팀원이 사이드바에 입력: *"환불 신청받으면 주문 조회하고, 7일 이내면 승인, 아니면 매니저에게 Slack 알림"*
-2. Weaver가 xyflow 캔버스에 4개 노드 생성: `webhook → stripe_lookup → policy_check → branch{approve | slack_notify}`
-3. 각 노드 클릭으로 Monaco에서 프롬프트·스키마 조정
-4. **Eval 데이터셋** (과거 환불 30건) 자동 실행 → 정확도 93%, 평균 $0.04, 2.1s
-5. "배포" 클릭 → shadow 모드(실 트래픽 10% 복제) → 3일 후 100% 롤아웃
-6. 라이브 trace에서 팀원이 문제 케이스 북마크 → 프롬프트 개선
+1. 로그인 → 빈 캔버스. 자연어 입력: *"HN 탑 10을 매일 아침 한국어로 요약해줘"*
+2. Weaver 가 5노드 생성: `trigger → fetch_hn → summarize → format → output`
+3. "Save as @jinhui/hn-morning" → 공개 URL 생성, 매일 07:00 자동 실행
+4. 다음 날 누군가 포크 → `@alex/hn-morning` (GitHub 트렌딩 노드 추가)
+5. Weaver: *"🧬 Your summarize prompt evolved. 17% shorter output, same accuracy. Accept?"*
+6. 수락 → v2 적용 · genealogy tree 에 진화 분기 기록
 
-## 4개 레이어 (전부 Cloudflare 무료 tier)
+## 4개 레이어 (전부 Cloudflare Free tier)
 
-1. **Canvas Builder** — xyflow + Monaco + **Workers AI** 자연어 생성 (BYOK 옵션)
-2. **Agent Runtime** — Cloudflare Workers + D1 + Cron Trigger (Durable Objects 대신 무료 대안)
-3. **Observability Core** — OTEL GenAI → **Axiom Free (500GB/월)**, 빌더 옆 실시간 재생
-4. **Eval Gate** — 데이터셋 × 어서션 DSL, 배포 전 자동 차단, shadow traffic 지원
+1. **Agent Canvas** — xyflow + Workers AI 자연어 생성 · 시각적 편집
+2. **Agent Runtime** — D1 + Cron (Durable Objects 안 씀) · 유저당 일일 cap
+3. **Observability** — OTEL GenAI → Axiom Free · trace replay
+4. **Evolution Engine** — Cron 으로 매일 top agent 프롬프트 변형 + shadow eval (ADR-008)
 
 ## 트렌디 스택 ($0)
 
 - **React Router v7 Framework Mode** · **TypeScript 5.9 strict** · **Tailwind CSS 4** · 커스텀 디자인 시스템
-- **xyflow v12** (캔버스) · **Monaco** · **Yjs + y-indexeddb** (local-first)
+- **xyflow v12** (캔버스) · **Yjs + y-indexeddb** (local-first)
 - **Zustand + TanStack Query + nuqs** · **valibot**
-- **Cloudflare Workers + Pages + D1 + R2 + KV + Cron + Workers AI** (전부 무료)
-- **Hono 4** · **Drizzle ORM**
-- **Axiom Free** (OTEL) · **Sentry Developer** (에러)
+- **Cloudflare Workers + D1 + R2 + KV + Vectorize + Analytics Engine + Cron + Workers AI** (전부 Free tier)
+- **Hono 4** (runtime API)
+- **Axiom Free** (OTEL 500GB/월) · **Sentry Developer** (5k event/월)
 - **Vitest 3** · **Playwright 1.59** · **MSW 2** · **Biome 2.4**
-- **GitHub Actions** (퍼블릭 레포 무제한 무료)
+- **GitHub Actions**
 
-## 💰 비용
+## 💰 비용 선언
 
-**MVP: $0/월**
+| 주체 | 월 비용 | 근거 |
+|---|---|---|
+| **유저** | **$0** | Workers AI 공유 pool · 유저당 일 10 run cap · BYOK 는 선택 |
+| **Weaver 운영** | **$0** | Cloudflare Free tier 만 사용 (ADR-006) |
 
-자세한 근거: [`docs/decisions/ADR-006-free-tier-first.md`](./docs/decisions/ADR-006-free-tier-first.md)
+자세한 근거: [`docs/decisions/ADR-006-free-tier-first.md`](./docs/decisions/ADR-006-free-tier-first.md) · [`docs/decisions/ADR-007-evolving-agent-network.md`](./docs/decisions/ADR-007-evolving-agent-network.md)
 
 ---
 

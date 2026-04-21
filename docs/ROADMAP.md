@@ -1,14 +1,16 @@
-# Roadmap — 14주 주차별 마일스톤 ($0 Free-tier)
+# Roadmap — 14주 Evolving Agent Network (운영 $0 · 유저 $0)
 
-> **시작 기준**: 2026-W17 (2026-04-27) 첫 커밋 — 실제로는 2026-04-21 early start
-> **런칭 목표**: Week 14 = 2026-W30
-> **예산**: $0 (ADR-006)
-> **현재 (2026-04-21)**: **Week 1 + Week 3 + Week 4 코어 완료 · 라이브 배포됨**
+> **피봇 (2026-04-22)**: "내부툴 빌더" → **"Evolving Agent Network"** (ADR-007)
+> **제품 한 줄**: Fork agents. Rate them. They evolve. Free forever.
+> **시작 기준**: 2026-W17 · 실제 코어 배포 2026-04-21
+> **런칭 목표**: Week 14 = 2026-W30 (2026-07-20)
+> **예산**: 운영 $0 · 유저 $0 (ADR-006 개정 · ADR-007)
+> **현재 (2026-04-22)**: **Phase 1 코어 완료 · 라이브 배포**
 >
 > - Runtime: https://weaver-runtime.jinhuistudy.workers.dev
 > - Web: https://weaver-web.jinhuistudy.workers.dev
 >
-> **다음 단계**: [`NEXT.md`](./NEXT.md) 참조.
+> **실행 계획**: [`NEXT.md`](./NEXT.md) (Sprint 0~9)
 
 ---
 
@@ -67,131 +69,104 @@
 
 ---
 
-## Phase 2 — Observability & Tools (Week 5-8)
+## Phase 2 — Network Foundation (Week 5-8)
 
-### Week 5 · "OTEL + Axiom"
+### Week 5 · "Auth + Rate Limit" (Sprint 0)
+- [ ] GitHub OAuth · `/auth/github` · `/auth/callback` · JWT HS256 쿠키
+- [ ] D1 migration: `users`, `orgs`, `memberships`, `rate_limits`
+- [ ] Hono middleware · `/api/me` · body override 방지
+- [ ] 유저당 일 cap: worker req 100, AI neurons 50, D1 writes 100
+- [ ] `/login` UI · loader 가드 · 아바타 뱃지
 
-- [ ] `apps/runtime/otel/` — OTEL SDK (minimal)
-- [ ] GenAI 스펙 span attributes (`gen_ai.*`)
-- [ ] Axiom OTLP/HTTP exporter (배치 10s)
-- [ ] Axiom Free 계정 가입 + dataset 생성
-- [ ] `wrangler secret put AXIOM_TOKEN`
-- [ ] `specs/observability-schema.md` 확정
+**산출물**: 익명 `/api/runs` → 401. GitHub 로그인 후 동일 호출 → 200, row 에 `created_by`/`org_id` 정확.
 
-**산출물**: 실행 1건 → Axiom에 5-20 spans. APL 쿼리로 검증. **무료 500GB/월.**
+### Week 6 · "Public Agent · Slug URL · Fork" (Sprint 1)
+- [ ] D1: `agents`, `agent_versions` · `agent_runs.agent_version_id`
+- [ ] `POST /api/agents` (save as) · `/@{handle}/{slug}` 공개 라우트
+- [ ] Fork 버튼 · `POST /api/agents/:id/fork` · `fork_of_agent_id` 기록
+- [ ] 빌더 "Save as..." 다이얼로그
 
-### Week 6 · "Trace Viewer"
+**산출물**: `/@jinhui/hn-summary` 공개 URL · Fork → `/@you/hn-summary` 즉시 복제.
 
-- [ ] `packages/observability` — Trace 데이터 모델
-- [ ] `apps/web/components/trace/TimelineView.tsx` — Canvas waterfall
-- [ ] `apps/web/components/trace/CostHeatmap.tsx` — 비용·지연
-- [ ] `/tools/:id/runs/:runId` 상세 페이지
-- [ ] Axiom API에서 단일 run 전체 trace fetch
-- [ ] 노드별 입출력 JSON diff (react-diff-viewer)
+### Week 7 · "OTEL + Cost · Run Viewer" (Sprint 2)
+- [ ] `packages/observability` — minimal OTEL SDK · `gen_ai.*` 속성
+- [ ] Axiom OTLP exporter · 10초 배치 flush
+- [ ] Analytics Engine 에 neurons/user/agent 카운터
+- [ ] `/runs/:runId` — timeline waterfall · span 클릭 시 prompt/response
 
-**산출물**: 실행 완료 → 2초 안에 trace 패널 렌더. 각 span 클릭 시 프롬프트·응답 표시.
+**산출물**: run 1건 → Axiom 5-15 spans · viewer 에서 지연/비용/프롬프트 확인.
 
-### Week 7 · "툴 레지스트리 + 4 빌트인"
+### Week 8 · "Feed · Subscribe · Search" (Sprint 3)
+- [ ] D1: `agent_outputs`, `subscriptions` · Vectorize 인덱스
+- [ ] `/@{handle}/{slug}/feed.json` (JSON Feed 1.1)
+- [ ] Subscribe 버튼 · `/@me/feed` 통합 타임라인
+- [ ] `/search` — bge-base 임베딩 + 키워드 하이브리드
 
-- [ ] `packages/core/tool.ts` — `defineTool()` 팩토리
-- [ ] `apps/runtime/tools/builtin/{http,sql,slack,stripe}.ts`
-- [ ] 툴 레지스트리 UI `/admin/tools`
-- [ ] Custom HTTP 툴 추가 폼 (URL, method, auth, schema)
-- [ ] Permission token (HMAC 서명 + scope 검증)
-
-**산출물**: CS 환불 시나리오를 캔버스에서 End-to-end 실행 (Stripe 테스트 계정).
-
-### Week 8 · "Time-Travel 디버깅"
-
-- [ ] D1 `run_history` 결정론 저장 (LLM 응답 캐시)
-- [ ] R2 대용량 페이로드 분리 저장
-- [ ] `/runs/:id/replay` 엔드포인트 (cache hit 우선)
-- [ ] Frontend "프롬프트 수정 후 재생" 버튼
-- [ ] diff view (원본 vs 재생 결과)
-
-**산출물**: Run #123 → 프롬프트 한 줄 수정 → 재생 → 결과 diff.
+**산출물**: RSS-style agent feed · 구독 · 유사 agent 검색.
 
 ---
 
-## Phase 3 — Eval · Deploy · Polish (Week 9-12)
+## Phase 3 — Evolution (Week 9-11)
 
-### Week 9 · "Eval Runner"
+### Week 9 · "Feedback + Genealogy Tree" (Sprint 4)
+- [ ] D1: `agent_feedback` (run_id, rating, comment)
+- [ ] 👍/👎 버튼 · post-run toast
+- [ ] Like ratio · fitness 차트 (30일)
+- [ ] Genealogy tree (d3-hierarchy) · `/@{handle}/{slug}/genealogy`
 
-- [ ] `packages/eval` — DSL 파서 (`specs/eval-dsl.md`)
-- [ ] R2 데이터셋 저장, D1 `eval_datasets` 메타
-- [ ] Cron 기반 배치 실행 (각 case = 새 agent_run)
-- [ ] Frontend `/tools/:id/eval` 페이지
-- [ ] 결과 매트릭스 (버전 × 데이터셋)
+**산출물**: "@alex/hn-digest → 나 → 3 forks" 시각화. Like ratio 82%.
 
-**산출물**: 30건 데이터셋 업로드 → eval 실행 → 정확도 93% 결과.
+### Week 10 · "Evolution Engine: Mutation" (Sprint 5)
+- [ ] D1: `agent_evolutions`
+- [ ] Daily cron (23:00 UTC) · Fitness 계산 · top-4 선발
+- [ ] 5 mutation strategies (concise/specific/cot/role/format) via Llama
+- [ ] Shadow eval (Llama 3B pairwise judge, 2 case, 60%+ win 시 suggest)
+- [ ] 비용 가드 · 관리자 dashboard
 
-### Week 10 · "배포 게이트 + Shadow Traffic"
+**산출물**: 매일 밤 top-4 agent 에 대해 5 variations × shadow eval. 일 neurons <5k (Free 50%).
 
-- [ ] 버전 개념 (`tool.published_version`, `shadow_version`, `shadow_sample_rate`)
-- [ ] Runtime에서 요청 수신 시 `ctx.waitUntil(shadowExecution)`
-- [ ] 비교 뷰 v1 vs v2 (정확도·비용·지연)
-- [ ] 승격 버튼 (eval 통과 강제)
+### Week 11 · "Shadow UI + v2 Suggestion" (Sprint 6)
+- [ ] Diff viewer (원본 vs candidate)
+- [ ] Suggestion 배너 ("🧬 Your agent evolved. 17% better.")
+- [ ] Accept / Shadow 10% / Reject · auto-rollback (7일 -20% 이하 시)
 
-**산출물**: v2 shadow 10% 배포 → 하루 후 v1 비교 지표.
-
-### Week 11 · "폴리싱 + Local-first 강화"
-
-> **변경**: 기존 Yjs 멀티유저 대신 **local-first 강화**에 집중. 실시간은 Phase 2(post-launch) 확장.
-
-- [ ] y-indexeddb 오프라인 완전 동작 검증
-- [ ] D1 스냅샷 merge 로직 견고화 (concurrent save 시 Y.applyUpdate로 CRDT merge)
-- [ ] `specs/sync-strategy.md` 작성
-- [ ] UI: 마지막 저장 시각 표시 + 동기화 상태 인디케이터
-- [ ] (Stretch) Fly.io 무료 VM y-websocket 서버 시험 배포 (Phase 2 준비)
-
-**산출물**: 오프라인 편집 후 복귀 시 매끄러운 merge. 실시간 협업은 post-launch.
-
-### Week 12 · "RBAC · 감사 · 비용 가드레일"
-
-- [ ] `viewer / editor / admin` 3 역할
-- [ ] D1 `audit_event` 테이블 (CRUD + 배포 + 실행)
-- [ ] 툴 단위 월 예산 (D1 기반 차단)
-- [ ] 실행 전 예상 비용 표시 (프롬프트 토큰 × 단가, Workers AI neurons 단위)
-- [ ] GitHub OAuth 로그인 (무료)
-
-**산출물**: 유료 팀 수용 준비 수준 보안·감사·예산.
+**산출물**: 수락한 v2 가 current version 으로 교체 · shadow 10% 라우팅 · 악화 시 자동 복원.
 
 ---
 
-## Phase 4 — Launch (Week 13-14)
+## Phase 4 — Launch (Week 12-14)
 
-### Week 13 · "문서 · 데모 · 랜딩"
+### Week 12 · "Trending · Explore · Discover" (Sprint 7)
+- [ ] Analytics Engine 집계 (24h · 7d · 30d)
+- [ ] `/explore` · `/explore/trending` · `/explore/:category`
+- [ ] Agent 카드 (like · fork count · subscriber · neurons)
+- [ ] 태그 시스템
 
-- [ ] `apps/docs-site` — Astro + Starlight
-- [ ] 가이드 10편 (Getting started, 5 시나리오, 커스텀 툴, eval, shadow, self-host)
-- [ ] 랜딩 페이지 (`weaver.pages.dev`)
-- [ ] **Self-host 가이드** (`docs/self-host/`):
-  - `ai-ollama.md` — Workers AI 대신 Ollama
-  - `trace-jaeger.md` — Axiom 대신 Jaeger + ClickHouse on Oracle Cloud Free
-  - `error-glitchtip.md` — Sentry 대신 GlitchTip Docker
-  - `collab-yjs-fly.md` — Yjs 실시간 Fly.io 무료
-- [ ] 데모 영상 × 5 (각 3분, 시나리오 A-E)
-- [ ] Product Hunt 자산 (GIF × 30)
-- [ ] Discord 서버 개설
+**산출물**: `/explore` 에 trending agent 10개 · 카테고리 필터.
 
-### Week 14 · "런칭"
+### Week 13 · "Landing + Invite-only" (Sprint 8)
+- [ ] `/` 랜딩 재작성 — "Fork agents. Rate them. They evolve. Free forever."
+- [ ] `/waitlist` · 이메일 수집 · Resend 환영 메일
+- [ ] Invite code 시스템 (초기 100명)
+- [ ] Seed agents 10개 직접 제작 (HN · GitHub trends · RSS brief)
+- [ ] 첫 20명 초대 · 피드백
+
+**산출물**: 랜딩 · waitlist · 20 베타 유저 · 10 seed agents.
+
+### Week 14 · "퍼블릭 런칭" (Sprint 9)
 
 **월요일**
-- [ ] GitHub repo public
-- [ ] `weaver.pages.dev` 최종 배포
-- [ ] Discord 공개
-- [ ] X 스레드 (10 트윗, GIF 5)
-- [ ] dev.to 영문 Part 1
-- [ ] velog 한글 버전
+- [ ] Rate limit · LLM 모더레이션 · k6 부하 시뮬레이션
+- [ ] `/docs` 기본 페이지 · 3분 데모 Loom
 
-**화요일 00:01 PST (= 17:01 KST)**
-- [ ] Product Hunt 발행
-- [ ] HN "Show HN: Weaver"
+**화요일-수요일**
+- [ ] HN "Show HN: Weaver — fork AI agents, they evolve, free forever"
+- [ ] ProductHunt 발행
+- [ ] Reddit r/LocalLLaMA, r/SideProject · Korean: geeknews, okky
 
-**수요일-금요일**
-- [ ] 피드백 트리아지
-- [ ] Issue 첫 기여자 환영
-- [ ] 미디어 outreach (TechCrunch, Latent Space, Changelog)
+**목요일-금요일**
+- [ ] 피드백 트리아지 · 긴급 이슈 대응
+- [ ] Post-launch backlog 정리
 
 ---
 
@@ -199,24 +174,29 @@
 
 | 위험 | 확률 | 완화 |
 |---|:-:|---|
-| Workers Free 100k req/day 초과 | 낮 | Cron 1분 간격 유지, rate limit middleware |
-| Cron 1분 지연 불만 | 중 | Self-fetch 패턴으로 실시간 수준 |
-| Workers AI 모델 품질 불충분 | 중 | BYOK Claude/OpenAI 경로 강조 (유저 선택) |
-| Axiom 500GB 초과 | 낮 | MVP 단계엔 불가능. 초과 시 Jaeger self-host |
-| D1 5GB 초과 | 낮 | 툴 10만개 필요. 초과 시 Postgres(Neon Free) 마이그레이션 |
-| 런칭 시점 경쟁자 등장 | 중 | Week 12에 private beta 10팀 확보 |
+| Workers AI 10k neurons/day 초과 (바이럴 시) | 높음 | 유저당 일 cap · 대기열 · 선택적 BYOK |
+| 악성 agent (스팸, NSFW) | 중 | 초기 invite-only · LLM 모더레이션 · report 버튼 |
+| 진화 엔진 품질 나쁨 (shadow eval 실패) | 중 | 5 strategies 다양화 · auto-rollback · creator toggle |
+| Cron 1분 지연 불만 | 낮 | agent feed 에서 "last run" 타임스탬프 노출 |
+| D1 5GB 초과 | 낮 | 10만 agents 필요, 초과 시 R2 archive |
+| Axiom 500GB 초과 | 낮 | run 1건 5KB · 1,000 run/일 = 150MB/월 · 여유 3,300배 |
+| Resend 3k mail/월 초과 (v2 알림) | 중 | 이메일 대신 in-app 알림 fallback |
+| 런칭 시점 경쟁자 (LangGraph 에 fork 기능 추가) | 중 | Week 13 invite-only seed · 원작자 credit 강조 |
+| 수익 모델 불명확 | 중 | 1년 OSS + GitHub Sponsors · Enterprise tier 는 후행 실험 |
 
 ---
 
-## 런칭 후 지표 (12주 후)
+## 런칭 후 지표 (Week 14 + 30일)
 
 | 지표 | 보수 | 목표 | 성공 |
 |---|:-:|:-:|:-:|
-| GitHub star | 500 | 2,000 | 5,000 |
-| Discord 멤버 | 100 | 500 | 1,500 |
-| 자체 호스팅 팀 | 10 | 50 | 200 |
+| GitHub star | 300 | 1,500 | 5,000 |
+| 활성 유저 (DAU) | 50 | 300 | 1,000 (Free tier 한계) |
+| 공개 agent 수 | 100 | 500 | 2,000 |
+| Fork 비율 | 10% | 20% | 35% |
+| v2 suggestion 수락률 | 25% | 40% | 60% |
 | Product Hunt | Top 20 | Top 10 | Top 3 |
-| HN Front page | 1회 | 2회 | 3회 |
+| HN Front page | 1회 | 2회 | Top 10 |
 | 영입 cold outreach | 2 | 5 | 10+ |
 | **인프라 비용 유지** | **$0** | **$0** | **$0** |
 
