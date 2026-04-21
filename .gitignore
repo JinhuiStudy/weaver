@@ -49,3 +49,6 @@ playwright/.cache/
 /apps/*/playwright-report/
 /apps/*/test-results/
 /apps/*/playwright/.cache/
+
+# TS build info
+**/tsconfig.tsbuildinfo
