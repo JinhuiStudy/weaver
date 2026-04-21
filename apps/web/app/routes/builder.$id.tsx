@@ -12,7 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { CommandPalette } from "~/components/canvas/CommandPalette";
 import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
@@ -21,6 +21,7 @@ import { Palette } from "~/components/canvas/Palette";
 import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
 import { loadCanvasFromFile } from "~/lib/importGraph";
+import { createRun } from "~/lib/runs";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
@@ -135,6 +136,20 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
       edges: state.edges,
     });
   }, [params.id]);
+
+  const navigate = useNavigate();
+  const [running, setRunning] = useState(false);
+  const onRun = useCallback(async () => {
+    setRunning(true);
+    try {
+      const { id: runId } = await createRun({ toolId: params.id });
+      navigate(`/tools/${params.id}/runs/${runId}`);
+    } catch (err) {
+      console.error("run failed", err);
+    } finally {
+      setRunning(false);
+    }
+  }, [params.id, navigate]);
 
   // Hidden file input triggered by the Import button; separated so we can
   // reuse the hydrate logic from elsewhere (e.g. ⌘K palette).
@@ -290,7 +305,14 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             Save
             <Kbd className="ml-1">⌘S</Kbd>
           </Button>
-          <Button variant="primary" size="sm" leftIcon={<Play className="lu" />}>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Play className="lu" />}
+            onClick={onRun}
+            loading={running}
+            disabled={running}
+          >
             Run
             <Kbd className="ml-1 bg-transparent text-white/70">⌘⏎</Kbd>
           </Button>

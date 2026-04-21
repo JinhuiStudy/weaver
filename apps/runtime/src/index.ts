@@ -3,17 +3,32 @@ import { type AiBinding, composeWithAi } from "./compose/ai";
 import { applyComposeIntent, type CanvasSnapshot, parseComposeIntent } from "./compose/stub";
 
 /**
- * Cloudflare Worker entry. Minimal Hono app with a `/api/compose` endpoint.
- * Compose path:
- *   1. If `env.AI` is bound (Workers AI enabled via wrangler.jsonc), use it.
- *   2. Otherwise fall back to the offline stub grammar — lets us exercise the
- *      pipeline end-to-end in dev without a Cloudflare account.
+ * Cloudflare Worker entry. Minimal Hono app.
+ *   • /api/compose — NL → graph diff (Workers AI or offline stub fallback).
+ *   • /api/runs    — create + inspect runs (D1 binding optional in dev).
  */
 type Env = {
   Bindings: {
     AI?: AiBinding;
+    DB?: D1DatabaseLike;
   };
 };
+
+/**
+ * Minimal D1 surface we need. Narrow on purpose so tests can mock.
+ */
+export interface D1DatabaseLike {
+  prepare(query: string): D1PreparedLike;
+}
+export interface D1PreparedLike {
+  bind(...values: unknown[]): D1PreparedLike;
+  run(): Promise<{ success: boolean }>;
+  first<T = unknown>(): Promise<T | null>;
+}
+
+function genId() {
+  return crypto.randomUUID();
+}
 
 const app = new Hono<Env>();
 
@@ -55,6 +70,61 @@ app.post("/api/compose", async (c) => {
     },
     usedAi: Boolean(ai),
   });
+});
+
+/**
+ * POST /api/runs — create a new agent_run row. Body:
+ *   { tool_id: string, tool_version?: number, input?: unknown, org_id?: string }
+ * Returns { id, status: "pending" } so the UI can navigate to /tools/:id/runs/:runId.
+ *
+ * If `env.DB` isn't bound (local dev without `wrangler dev` or the d1
+ * binding turned off), we still return a synthetic id so the frontend wire
+ * works end-to-end. The Cron handler's pickup will simply find no row.
+ */
+app.post("/api/runs", async (c) => {
+  let body: { tool_id?: string; tool_version?: number; input?: unknown; org_id?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid JSON body" }, 400);
+  }
+
+  const toolId = typeof body.tool_id === "string" ? body.tool_id : null;
+  if (!toolId) return c.json({ error: "tool_id is required" }, 400);
+
+  const id = genId();
+  const now = Date.now();
+  const row = {
+    id,
+    tool_id: toolId,
+    tool_version: body.tool_version ?? 1,
+    org_id: body.org_id ?? "local",
+    status: "pending" as const,
+    input_json: JSON.stringify(body.input ?? {}),
+    created_at: now,
+    updated_at: now,
+  };
+
+  const db = c.env.DB;
+  if (db) {
+    await db
+      .prepare(
+        `INSERT INTO agent_runs (id, tool_id, tool_version, org_id, status, input, state, created_at, updated_at, retry_count, cost_usd_micro)
+         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, 0, 0)`,
+      )
+      .bind(
+        row.id,
+        row.tool_id,
+        row.tool_version,
+        row.org_id,
+        row.input_json,
+        row.created_at,
+        row.updated_at,
+      )
+      .run();
+  }
+
+  return c.json({ id, status: "pending", tool_id: toolId });
 });
 
 export default {

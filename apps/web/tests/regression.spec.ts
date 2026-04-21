@@ -234,6 +234,33 @@ test("? key also opens the Help modal (keyboard discovery)", async ({ page }) =>
   await expect(page.locator('[role="dialog"][aria-label="Help"]')).toBeVisible();
 });
 
+/* ── F18: Run button wires /api/runs + navigates to trace viewer ── */
+
+test("Run · POST /api/runs → navigate to /tools/:id/runs/:runId", async ({ page }) => {
+  // Mock the runtime. Capture the request body so we can assert.
+  let lastBody: unknown = null;
+  await page.route("**/api/runs", async (route) => {
+    lastBody = await route.request().postDataJSON();
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ id: "run-mocked-01", status: "pending", tool_id: "mocked" }),
+    });
+  });
+
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await page.locator('button:has-text("Run")').click();
+  await page.waitForURL(/\/tools\/.*\/runs\/run-mocked-01$/, { timeout: 5000 });
+
+  // Request body carried our toolId.
+  expect((lastBody as { tool_id?: string })?.tool_id).toBe(id);
+
+  // Landed on trace viewer placeholder.
+  await expect(page.locator("h1", { hasText: /Trace/i })).toBeVisible();
+  await expect(page.locator("text=run-mocked-01").first()).toBeVisible();
+});
+
 /* ── F17: Undo / Redo buttons have visible text labels ──────────── */
 
 test("Undo / Redo header buttons show their text label (not icon-only)", async ({ page }) => {
