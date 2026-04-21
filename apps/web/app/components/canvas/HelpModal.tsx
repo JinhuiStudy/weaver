@@ -147,15 +147,17 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
             <h3 className="mb-3 font-mono text-[10px] uppercase tracking-[0.15em] text-text-tertiary">
               Shortcuts
             </h3>
-            <ul className="space-y-2.5">
+            <ul className="space-y-3">
               {SHORTCUTS.map((s) => (
-                <li key={s.label} className="flex items-start gap-3 text-xs">
-                  <span className="min-w-[130px] text-text-primary">{s.label}</span>
-                  <span className="flex flex-wrap items-center gap-1">{s.hint}</span>
-                  {s.desc ? (
-                    <span className="ml-auto max-w-[220px] text-right text-text-tertiary">
-                      {s.desc}
+                <li key={s.label} className="help-shortcut-row flex flex-col gap-0.5 text-xs">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="help-shortcut-label text-text-primary">{s.label}</span>
+                    <span className="help-shortcut-chips flex items-center gap-1 whitespace-nowrap">
+                      {s.hint}
                     </span>
+                  </div>
+                  {s.desc ? (
+                    <div className="text-text-tertiary leading-relaxed">{s.desc}</div>
                   ) : null}
                 </li>
               ))}

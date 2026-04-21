@@ -193,6 +193,36 @@ test("Help button opens a modal listing shortcuts · actions · links", async ({
   await expect(dialog).toHaveCount(0);
 });
 
+test("Help · Shortcuts rows render label + chips inline (not vertically stacked)", async ({
+  page,
+}) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  await page.locator('button[title^="Help"]').click();
+  const dialog = page.locator('[role="dialog"][aria-label="Help"]');
+  await expect(dialog).toBeVisible();
+
+  // Find the "Command palette" row — its label + chip row MUST fit on one line.
+  const row = dialog.locator(".help-shortcut-row", { hasText: "Command palette" }).first();
+  await expect(row).toBeVisible();
+
+  // Check: label's vertical center and chip's vertical center overlap.
+  const geo = await row.evaluate((el) => {
+    const label = el.querySelector(".help-shortcut-label") as HTMLElement | null;
+    const chips = el.querySelector(".help-shortcut-chips") as HTMLElement | null;
+    if (!label || !chips) return { overlap: false };
+    const a = label.getBoundingClientRect();
+    const b = chips.getBoundingClientRect();
+    return {
+      overlap: Math.abs(a.top + a.height / 2 - (b.top + b.height / 2)) < 16,
+      aTop: a.top,
+      bTop: b.top,
+    };
+  });
+  expect(geo.overlap).toBe(true);
+});
+
 test("? key also opens the Help modal (keyboard discovery)", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);
@@ -202,6 +232,23 @@ test("? key also opens the Help modal (keyboard discovery)", async ({ page }) =>
   await page.keyboard.press("Shift+/"); // "?" in most US/KR layouts
   await page.waitForTimeout(120);
   await expect(page.locator('[role="dialog"][aria-label="Help"]')).toBeVisible();
+});
+
+/* ── F17: Undo / Redo buttons have visible text labels ──────────── */
+
+test("Undo / Redo header buttons show their text label (not icon-only)", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Button labels should be discoverable without hovering for a title tooltip.
+  await expect(page.locator('button[aria-label^="Undo"]', { hasText: /Undo/ })).toBeVisible();
+  await expect(page.locator('button[aria-label^="Redo"]', { hasText: /Redo/ })).toBeVisible();
+
+  await page.screenshot({
+    path: "tests/screenshots/f17-header-buttons.png",
+    fullPage: false,
+    clip: { x: 0, y: 0, width: 1280, height: 60 },
+  });
 });
 
 /* ── F15: Compose header button opens palette in compose mode directly ── */

@@ -231,24 +231,24 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           <Button
             variant="ghost"
             size="sm"
-            iconOnly
             disabled={historyLength === 0}
             onClick={undo}
             aria-label="Undo (⌘Z)"
             title="Undo · ⌘Z"
+            leftIcon={<Undo2 className="lu" />}
           >
-            <Undo2 className="lu" />
+            Undo
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            iconOnly
             disabled={futureLength === 0}
             onClick={redo}
             aria-label="Redo (⌘⇧Z)"
             title="Redo · ⌘⇧Z"
+            leftIcon={<Redo2 className="lu" />}
           >
-            <Redo2 className="lu" />
+            Redo
           </Button>
           <Button
             variant="ghost"
