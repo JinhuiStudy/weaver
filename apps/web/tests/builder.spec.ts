@@ -261,6 +261,46 @@ test("disallowed connections (branch→branch) are refused", async ({ page }) =>
   });
 });
 
+/**
+ * Label uniqueness: the canvas stores each node's label as UI data, but a core
+ * invariant is that labels are the programmatic handle for downstream nodes
+ * (`{{ input.email }}`-style template refs only make sense if the first segment
+ * is unique). We delegate the check to `@weaver/core`'s `uniqueLabelError`
+ * and surface it in the inspector help line.
+ */
+test("duplicate label across nodes surfaces an inspector error", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Select the tool node and rename it to an already-taken label ("policy_check"
+  // — that's the agent's seeded label).
+  const tool = page.locator(".wv-node.n-tool").filter({ hasText: "stripe_lookup" });
+  await tool.click();
+  await page.waitForTimeout(150);
+
+  const labelInput = page.locator('input[placeholder="policy_check"]');
+  await labelInput.fill("policy_check");
+  await page.waitForTimeout(100);
+
+  await expect(labelInput).toHaveClass(/err/);
+  await expect(page.locator("div.help.err")).toContainText(/duplicate/i);
+
+  await page.screenshot({
+    path: "tests/screenshots/70-duplicate-label.png",
+    fullPage: false,
+  });
+
+  // And a unique label clears the error immediately.
+  await labelInput.fill("stripe_lookup_v2");
+  await page.waitForTimeout(100);
+  await expect(labelInput).not.toHaveClass(/err/);
+  await expect(page.locator("div.help", { hasText: "고유" })).toBeVisible();
+  await page.screenshot({
+    path: "tests/screenshots/71-unique-label.png",
+    fullPage: false,
+  });
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

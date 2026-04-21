@@ -1,22 +1,8 @@
+import { labelError, uniqueLabelError } from "@weaver/core";
 import { Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import * as v from "valibot";
 import { Badge, Button, Input, Tabs } from "~/components/ui";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
-
-// @weaver/core re-exports the shared schemas. We validate only the UI-visible
-// fields (label) here — full node validation happens at save time.
-const LabelSchema = v.pipe(
-  v.string(),
-  v.minLength(1, "label is required"),
-  v.maxLength(40, "label must be ≤ 40 chars"),
-);
-
-function validateLabel(value: string): string | null {
-  const result = v.safeParse(LabelSchema, value);
-  if (result.success) return null;
-  return result.issues[0]?.message ?? "invalid";
-}
 
 export function Inspector() {
   const selectedId = useCanvas((s) => s.selectedId);
@@ -63,14 +49,24 @@ function EmptyInspector() {
 function PropsForm({ node }: { node: CanvasNode }) {
   const updateNodeData = useCanvas((s) => s.updateNodeData);
   const removeNode = useCanvas((s) => s.removeNode);
+  const allNodes = useCanvas((s) => s.nodes);
 
   const [label, setLabel] = useState<string>(node.data.label ?? "");
   const [body, setBody] = useState<string>(stringifyBody(node.data.body));
 
-  const labelError = validateLabel(label);
+  // Two-layer validation from @weaver/core:
+  //   1. Shape (non-empty, ≤ 40 chars) — labelError
+  //   2. Uniqueness across the current canvas — uniqueLabelError
+  // The shape check wins when both fail, so users see the most fundamental
+  // problem first.
+  const siblings = useMemo(
+    () => allNodes.map((n) => ({ id: n.id, label: (n.data.label ?? "") as string })),
+    [allNodes],
+  );
+  const currentLabelError = labelError(label) ?? uniqueLabelError(label, node.id, siblings);
 
   const commitLabel = () => {
-    if (labelError) return;
+    if (currentLabelError) return;
     updateNodeData(node.id, { label });
   };
 
@@ -101,7 +97,7 @@ function PropsForm({ node }: { node: CanvasNode }) {
         <div className="label">Label</div>
         <Input
           value={label}
-          state={labelError ? "error" : "default"}
+          state={currentLabelError ? "error" : "default"}
           onChange={(e) => setLabel(e.target.value)}
           onBlur={commitLabel}
           onKeyDown={(e) => {
@@ -113,8 +109,8 @@ function PropsForm({ node }: { node: CanvasNode }) {
           }}
           placeholder="policy_check"
         />
-        <div className={`help${labelError ? " err" : ""}`}>
-          {labelError ?? "snake_case · 40자 이하"}
+        <div className={`help${currentLabelError ? " err" : ""}`}>
+          {currentLabelError ?? "snake_case · 40자 이하 · 캔버스 내 고유"}
         </div>
       </div>
 
