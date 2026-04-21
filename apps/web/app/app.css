@@ -1108,3 +1108,86 @@ p {
   );
   background-size: 24px 24px;
 }
+
+/* ═════════════════════════════════════════════════════════
+   xyflow (@xyflow/react) overrides — match Weaver design tokens
+   ═════════════════════════════════════════════════════════ */
+
+.react-flow {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+.react-flow__handle.wv-flow-handle {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface-4);
+  border: 2px solid var(--bg-canvas);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.react-flow__handle.wv-flow-handle:hover {
+  transform: translateY(-50%) scale(1.25);
+}
+.react-flow__handle-left { left: -6px; }
+.react-flow__handle-right { right: -6px; }
+
+.wv-node.n-input .react-flow__handle-right { background: var(--node-input); }
+.wv-node.n-agent .react-flow__handle { background: var(--node-agent); }
+.wv-node.n-tool .react-flow__handle { background: var(--node-tool); }
+.wv-node.n-branch .react-flow__handle { background: var(--node-branch); }
+.wv-node.n-output .react-flow__handle-left { background: var(--node-output); }
+
+.react-flow__edge-path {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--weaver-indigo);
+  stroke-width: 2;
+}
+.react-flow__connection-path {
+  stroke: var(--weaver-cyan);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.react-flow__controls {
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-raised);
+}
+.react-flow__controls-button {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+}
+.react-flow__controls-button:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+.react-flow__controls-button svg {
+  fill: currentColor;
+  max-width: 14px;
+  max-height: 14px;
+}
+
+.react-flow__minimap {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.react-flow__minimap-mask {
+  fill: rgba(3, 3, 5, 0.75);
+}
+
+.react-flow__selection {
+  background: var(--weaver-indigo-soft);
+  border: 1px dashed var(--weaver-indigo);
+}

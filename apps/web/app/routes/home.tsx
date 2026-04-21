@@ -1,7 +1,7 @@
 import { ArrowRight, Github, Sparkles } from "lucide-react";
 import { Link } from "react-router";
 import { WvNode } from "~/components/canvas/WvNode";
-import { Badge, Button } from "~/components/ui";
+import { Badge } from "~/components/ui";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -37,9 +37,13 @@ export default function Home() {
             <Github className="lu" />
             GitHub
           </a>
-          <Button variant="primary" size="sm" rightIcon={<ArrowRight className="lu" />}>
+          <Link
+            to="/builder/demo"
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+          >
             빌더 열기
-          </Button>
+            <ArrowRight className="lu" />
+          </Link>
         </nav>
       </header>
 
@@ -71,9 +75,13 @@ export default function Home() {
           </p>
 
           <div className="mt-10 flex items-center gap-3">
-            <Button variant="primary" size="lg" rightIcon={<ArrowRight className="lu" />}>
+            <Link
+              to="/builder/demo"
+              className="btn btn-primary btn-lg inline-flex items-center gap-1.5"
+            >
               시작하기
-            </Button>
+              <ArrowRight className="lu" />
+            </Link>
             <Link to="/design" className="btn btn-outlined btn-lg inline-flex items-center gap-1.5">
               <Sparkles className="lu" />
               Design System 보기
