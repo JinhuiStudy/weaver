@@ -407,6 +407,84 @@ test("Save exports a parseGraph-valid JSON download", async ({ page }) => {
   await page.screenshot({ path: "tests/screenshots/90-save-triggered.png", fullPage: false });
 });
 
+/**
+ * Import is the inverse of Save: select a weaver.json file → runtime
+ * `parseGraph` validates → store hydrates with the new nodes/edges. Covers
+ * the common flow "export from one tool_id, import into another".
+ */
+test("Import JSON replaces the canvas with the uploaded graph", async ({ page }) => {
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  // Craft a minimal 3-node import payload (input → agent → output).
+  const payload = {
+    version: 1,
+    tool_id: "imported-demo",
+    tool_version: 1,
+    nodes: [
+      {
+        id: "imp-in",
+        type: "input",
+        position: { x: 0, y: 0 },
+        label: "imported_webhook",
+        version: 1,
+        trigger: { kind: "manual" },
+      },
+      {
+        id: "imp-ag",
+        type: "agent",
+        position: { x: 280, y: 0 },
+        label: "imported_agent",
+        version: 1,
+        model: "claude-sonnet-4-6",
+        system_prompt: "",
+        user_prompt: "test",
+        tool_choice: "auto",
+        use_prompt_cache: true,
+      },
+      {
+        id: "imp-out",
+        type: "output",
+        position: { x: 560, y: 0 },
+        label: "imported_return",
+        version: 1,
+        response_kind: { kind: "return_value" },
+      },
+    ],
+    edges: [
+      { id: "imp-e1", source: { node_id: "imp-in" }, target: { node_id: "imp-ag" } },
+      { id: "imp-e2", source: { node_id: "imp-ag" }, target: { node_id: "imp-out" } },
+    ],
+  };
+
+  // Playwright `setInputFiles` with buffer — works even for hidden file inputs.
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.locator("button", { hasText: "Import" }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: "imported.weaver.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(payload)),
+  });
+
+  await page.waitForTimeout(200);
+
+  // Seeded nodes gone; imported 3 present.
+  await expect(page.locator(".wv-node")).toHaveCount(3);
+  await expect(
+    page.locator(".wv-node.n-agent .label", { hasText: /^imported_agent$/ }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".wv-node.n-input .label", { hasText: /^imported_webhook$/ }),
+  ).toBeVisible();
+  await expect(page.locator(".react-flow__edge")).toHaveCount(2);
+
+  await page.screenshot({
+    path: "tests/screenshots/91-after-import.png",
+    fullPage: false,
+  });
+});
+
 test("label validation shows error inline", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

@@ -1,12 +1,23 @@
 import type { Edge } from "@xyflow/react";
-import { ArrowLeft, Check, Loader2, Play, Redo2, Save, Sparkles, Undo2 } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import {
+  ArrowLeft,
+  Check,
+  Loader2,
+  Play,
+  Redo2,
+  Save,
+  Sparkles,
+  Undo2,
+  Upload,
+} from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
 import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
+import { loadCanvasFromFile } from "~/lib/importGraph";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
@@ -122,6 +133,27 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     });
   }, [params.id]);
 
+  // Hidden file input triggered by the Import button; separated so we can
+  // reuse the hydrate logic from elsewhere (e.g. ⌘K palette).
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const onImportClick = useCallback(() => fileInputRef.current?.click(), []);
+  const onFilePicked = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const { nodes, edges, toolId } = await loadCanvasFromFile(file);
+        useCanvas.getState().hydrate(toolId || params.id, nodes, edges);
+      } catch (err) {
+        console.error("import failed", err);
+      } finally {
+        // Reset so selecting the same file twice still fires change.
+        e.target.value = "";
+      }
+    },
+    [params.id],
+  );
+
   // Global keyboard shortcuts (⌘Z / ⌘⇧Z). We skip when a form field is focused
   // so Cmd+Z inside a label/textarea edits text instead of rewinding the graph.
   useEffect(() => {
@@ -184,6 +216,21 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             Compose
             <Kbd className="ml-1">⌘K</Kbd>
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            leftIcon={<Upload className="lu" />}
+            onClick={onImportClick}
+          >
+            Import
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={onFilePicked}
+          />
           <Button variant="outlined" size="sm" leftIcon={<Save className="lu" />} onClick={onSave}>
             Save
             <Kbd className="ml-1">⌘S</Kbd>
