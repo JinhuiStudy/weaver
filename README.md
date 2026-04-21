@@ -39,13 +39,13 @@
 
 ## 트렌디 스택 ($0)
 
-- **React Router v7 Framework Mode** · **TypeScript 5.9 strict** · **Tailwind CSS 4** · **shadcn/ui**
+- **React Router v7 Framework Mode** · **TypeScript 5.9 strict** · **Tailwind CSS 4** · 커스텀 디자인 시스템
 - **xyflow v12** (캔버스) · **Monaco** · **Yjs + y-indexeddb** (local-first)
-- **Zustand + TanStack Query + nuqs** · **react-hook-form + valibot**
+- **Zustand + TanStack Query + nuqs** · **valibot**
 - **Cloudflare Workers + Pages + D1 + R2 + KV + Cron + Workers AI** (전부 무료)
 - **Hono 4** · **Drizzle ORM**
 - **Axiom Free** (OTEL) · **Sentry Developer** (에러)
-- **Vitest 3** · **Playwright 1.5x** · **MSW 2** · **Biome 2**
+- **Vitest 3** · **Playwright 1.59** · **MSW 2** · **Biome 2.4**
 - **GitHub Actions** (퍼블릭 레포 무제한 무료)
 
 ## 💰 비용
@@ -54,30 +54,139 @@
 
 자세한 근거: [`docs/decisions/ADR-006-free-tier-first.md`](./docs/decisions/ADR-006-free-tier-first.md)
 
-## 상태
+---
 
-🏗️ **Ready for Week 1 kickoff** — 문서 42 파일 · 517KB · ADR 6건 · spec 6건 · design system 완성.
-**코드 시작일: 2026-W17 (2026-04-27 월)**.
+## 🚧 현재 진행 상황 (2026-04-21)
 
-## 🚀 시작하기
+> **Phase 1 — Scaffold & Core** 진행 중. Week 1 대부분의 목표가 이미 구현됨.
 
-첫 접속이라면 순서대로:
+### ✅ 완료된 것
 
-1. **[`docs/KICKOFF.md`](./docs/KICKOFF.md)** — 0시간부터 첫 커밋까지 (3시간, $0)
-2. **[`docs/WEEK-1-PLAN.md`](./docs/WEEK-1-PLAN.md)** — Day-by-day 실행 계획
+**`apps/web`** — React Router v7 on Cloudflare Pages
+- Claude Design v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
+- 컴포넌트 라이브러리: `Button`(7 variant) · `Input` · `Badge` · `Card` · `Tabs` · `Kbd` · `Tooltip` · `Skeleton` · `Empty` · `Toast`
+- `WvNode` 캔버스 프리미티브 (5 type × 7 state) + xyflow `Handle` 통합
+- **`/` 홈 히어로** — 브랜드 워드마크 · 4노드 데모 스트립 · 피처 카드
+- **`/design` 쇼케이스** — 10개 섹션 (color · type · nodes · states · buttons · inputs · badges · tabs · cards · feedback)
+- **`/builder/:id` 빌더**
+  - 좌측 팔레트 → 캔버스 드래그&드롭 (5종 노드)
+  - 포트 드래그로 엣지 연결
+  - 우측 인스펙터 — label valibot 실시간 검증, body 편집, branch outputs chip 편집 (삭제 시 고아 엣지 cascade)
+  - **Yjs + y-indexeddb 로컬 영속** (새로고침 후 노드 위치/데이터 보존) · sync 상태 뱃지
 
-## 빠른 읽기 순서
+**`packages/core`** — 공유 스키마 (순수 TS, zero React/DOM 의존)
+- 5개 노드 타입 **valibot** 스키마 (Input · Agent · Tool · Branch · Output)
+- Edge 연결 매트릭스 + 8 error variant validation
+- Graph DAG 검증 (DFS 사이클 감지 + 고립 노드 감지)
+- Vitest **36 테스트 통과**
 
-1. [`docs/VISION.md`](./docs/VISION.md) — 왜 이것이 새 카테고리인가
-2. [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — 4 레이어 + mermaid (D1 + Cron 기반)
-3. [`docs/PRODUCT.md`](./docs/PRODUCT.md) — 킬러 피처 6개
-4. [`docs/ROADMAP.md`](./docs/ROADMAP.md) — 14주 주차별 마일스톤
-5. [`docs/TECH_STACK.md`](./docs/TECH_STACK.md) — 선택 + 무료 tier 한도
-6. [`docs/COMPETITION.md`](./docs/COMPETITION.md) — 포지셔닝
-7. [`docs/LAUNCH.md`](./docs/LAUNCH.md) — 5채널 런칭 전략
-8. [`docs/decisions/`](./docs/decisions/) — ADR 6건
-9. [`specs/`](./specs/) — **design-system** · **screens** · node-types · tool-registry · observability · eval
-10. [`example/design/`](./example/design/) — Claude Design HTML 라이브 데모 + `tokens.css` (420+ 토큰)
+**E2E (`apps/web/tests/`)** — Playwright
+- 5 시나리오: home/design/builder 렌더 · body 줄바꿈 · inspector 전환 · branch outputs cascade · label validation
+- 단계별 스크린샷을 `tests/screenshots/` 에 commit (시각적 회귀 확인)
+
+**Infra**
+- pnpm workspace · biome 2.4 · tsconfig strict
+- GitHub Actions 워크플로우 (typecheck/lint/build)
+- 커밋·푸시 히스토리: [`github.com/JinhuiStudy/weaver`](https://github.com/JinhuiStudy/weaver) (private)
+
+### 🔜 다음 (Phase 1 잔여)
+
+- **Week 3 — NL Composer** — `apps/runtime` Hono 스캐폴드 + `/api/compose` 자연어→diff (Workers AI)
+- **Week 4 — Agent Runtime α** — D1 `agent_runs` 스키마 + Cron + self-fetch 패턴
+- **Week 5-6 — OTEL + Trace Viewer** — Axiom Free 통합
+
+전체 로드맵: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
+
+---
+
+## 🚀 로컬에서 돌려보기
+
+```bash
+# 최초 1회
+pnpm install
+
+# 개발 서버 (apps/web → http://localhost:5173)
+pnpm dev
+```
+
+주요 페이지:
+- **http://localhost:5173/** — 홈
+- **http://localhost:5173/design** — 디자인 시스템 쇼케이스
+- **http://localhost:5173/builder/demo** — 빌더 (빈 tool_id 자유롭게)
+
+### 공통 스크립트
+
+```bash
+pnpm typecheck       # 전 패키지 tsc strict
+pnpm lint            # biome check (CSS는 제외)
+pnpm lint:fix        # 자동 포맷 + 수정
+pnpm test:run        # packages/core Vitest
+pnpm build           # 전 패키지 빌드
+
+# apps/web 전용
+pnpm --filter=@weaver/web test:e2e       # Playwright (headless)
+pnpm --filter=@weaver/web test:e2e:ui    # Playwright UI 모드
+```
+
+---
+
+## 📐 아키텍처
+
+```
+weaver/
+├── apps/
+│   ├── web/              # ✅ 빌더 UI — RR7 + Cloudflare Pages
+│   │   ├── app/
+│   │   │   ├── routes/          # home · design · builder.$id
+│   │   │   ├── components/
+│   │   │   │   ├── canvas/      # NodeCanvas · FlowNodeShell · Palette · Inspector
+│   │   │   │   └── ui/          # Button · Badge · Card · Tabs · …
+│   │   │   ├── stores/canvas.ts # Zustand (nodes/edges/selection/actions)
+│   │   │   ├── lib/
+│   │   │   │   ├── yjs-provider.ts        # Y.Doc + IndexeddbPersistence
+│   │   │   │   └── useCanvasPersistence.ts
+│   │   │   └── styles/tokens.css # 420+ 디자인 토큰
+│   │   └── tests/         # Playwright + screenshots
+│   ├── runtime/           # 🔜 Hono on Workers + Cron
+│   └── docs-site/         # 🔜 Astro (Week 13)
+│
+├── packages/
+│   ├── core/              # ✅ valibot 스키마 · DAG 검증 · 36 tests
+│   ├── canvas/            # 🔜 xyflow 노드 재사용 컴포넌트
+│   ├── runtime/           # 🔜 AgentExecutor
+│   ├── observability/     # 🔜 OTEL exporter + Trace Viewer
+│   └── eval/              # 🔜 DSL 파서 · runner
+│
+├── docs/                  # 📄 VISION · ARCHITECTURE · ROADMAP · ADR 6건
+├── specs/                 # 📐 design-system · screens · node-types · tool-registry · observability · eval
+└── example/design/        # 🎨 Claude Design HTML 라이브 데모 + tokens.css (단일 진실의 원천)
+```
+
+각 4개 레이어의 상세: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
+
+---
+
+## 📚 문서 읽기 순서
+
+첫 방문이라면:
+1. **[`docs/VISION.md`](./docs/VISION.md)** — 왜 이것이 새 카테고리인가
+2. **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** — 4 레이어 (D1 + Cron 기반)
+3. **[`docs/PRODUCT.md`](./docs/PRODUCT.md)** — 킬러 피처 6개
+4. **[`docs/ROADMAP.md`](./docs/ROADMAP.md)** — 14주 마일스톤
+
+결정 근거:
+- [`docs/decisions/`](./docs/decisions/) — ADR 6건 (특히 ADR-006 Free-tier First 가 핵심 정책)
+
+구현 스펙:
+- [`specs/design-system.md`](./specs/design-system.md) — 색·타이포·컴포넌트 규칙
+- [`specs/screens.md`](./specs/screens.md) — 화면별 레이아웃
+- [`specs/node-types.md`](./specs/node-types.md) — 노드 스키마 · UI 계약
+- [`specs/tool-registry.md`](./specs/tool-registry.md) · [`specs/observability-schema.md`](./specs/observability-schema.md) · [`specs/eval-dsl.md`](./specs/eval-dsl.md)
+
+경쟁 · 런칭:
+- [`docs/COMPETITION.md`](./docs/COMPETITION.md) · [`docs/LAUNCH.md`](./docs/LAUNCH.md) · [`docs/TECH_STACK.md`](./docs/TECH_STACK.md)
+
+---
 
 ## 라이선스
 
