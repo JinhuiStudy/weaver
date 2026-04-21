@@ -101,6 +101,64 @@ test("palette · Add agent twice places the two new nodes without overlap", asyn
   expect(overlap).toBe(false);
 });
 
+/* ── F10: Compose with AI via /api/compose ───────────────────────── */
+
+test("Compose with AI · prompt submit applies the runtime diff to the canvas", async ({ page }) => {
+  // Canned /api/compose response — stand in for both the offline stub and the
+  // Workers AI path. The shape matches the real endpoint
+  // (see apps/runtime/src/index.ts).
+  await page.route("**/api/compose", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        intent: { ops: [{ kind: "add_node", nodeType: "agent" }] },
+        canvas: { nodes: [], edges: [] }, // not consumed by the web side
+        diff: {
+          addedNodes: [
+            {
+              id: "compose-1",
+              type: "agent",
+              position: { x: 420, y: 420 },
+              data: { label: "ai_generated" },
+            },
+          ],
+          addedEdges: [],
+        },
+      }),
+    });
+  });
+
+  const id = newToolId();
+  await gotoBuilder(page, id);
+
+  const baselineAgents = await page.locator(".wv-node.n-agent").count();
+
+  await page.keyboard.press("Meta+k");
+  const dialog = page.locator('[role="dialog"][aria-label="Command palette"]');
+  await expect(dialog).toBeVisible();
+
+  // Select the Compose command — query narrows to it.
+  await dialog.locator("input").fill("compose ai");
+  await dialog.locator("input").press("Enter");
+  await page.waitForTimeout(150);
+
+  // Palette should switch to "Compose" mode: textarea + Submit button.
+  const composeTextarea = page.locator('textarea[aria-label="Compose prompt"]');
+  await expect(composeTextarea).toBeVisible();
+  await composeTextarea.fill("add an agent node");
+  await page.locator('button[aria-label="Submit compose prompt"]').click();
+  await page.waitForTimeout(250);
+
+  // Canvas picks up the new agent from the mocked diff.
+  await expect(page.locator(".wv-node.n-agent").filter({ hasText: "ai_generated" })).toHaveCount(1);
+  await expect(page.locator(".wv-node.n-agent")).toHaveCount(baselineAgents + 1);
+
+  await page.screenshot({
+    path: "tests/screenshots/f10-compose-applied.png",
+    fullPage: false,
+  });
+});
+
 test("palette jump-to-node highlights it in the inspector", async ({ page }) => {
   const id = newToolId();
   await gotoBuilder(page, id);

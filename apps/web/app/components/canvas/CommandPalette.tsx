@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   Download,
   Play,
   Plus,
@@ -11,12 +12,17 @@ import {
   Undo2,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { runCompose } from "~/lib/compose";
 import { type NodeKind, useCanvas } from "~/stores/canvas";
 
 export interface CommandContext {
   onSave: () => void;
   onImport: () => void;
 }
+
+type PaletteMode =
+  | { kind: "commands" }
+  | { kind: "compose"; submitting: boolean; error: string | null };
 
 interface Command {
   id: string;
@@ -71,7 +77,10 @@ export function CommandPalette({
 }) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [mode, setMode] = useState<PaletteMode>({ kind: "commands" });
+  const [composePrompt, setComposePrompt] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const undo = useCanvas((s) => s.undo);
   const redo = useCanvas((s) => s.redo);
   const canUndo = useCanvas((s) => s.history.length > 0);
@@ -81,11 +90,13 @@ export function CommandPalette({
   const removeNode = useCanvas((s) => s.removeNode);
   const selectedId = useCanvas((s) => s.selectedId);
 
-  // Reset query + selection every time the palette opens.
+  // Reset everything every time the palette opens.
   useEffect(() => {
     if (!open) return;
     setQuery("");
     setActiveIndex(0);
+    setMode({ kind: "commands" });
+    setComposePrompt("");
     requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
 
@@ -96,6 +107,17 @@ export function CommandPalette({
       addNodeCommand("agent"),
       addNodeCommand("branch"),
       addNodeCommand("output"),
+      {
+        id: "compose-ai",
+        label: "Compose with AI…",
+        hint: "NL → diff",
+        icon: <Sparkles className="lu" />,
+        keywords: ["compose", "ai", "nl", "natural", "language", "prompt", "generate"],
+        run: () => {
+          setMode({ kind: "compose", submitting: false, error: null });
+          requestAnimationFrame(() => textareaRef.current?.focus());
+        },
+      },
       {
         id: "save",
         label: "Save · Export to JSON",
@@ -189,7 +211,22 @@ export function CommandPalette({
     const cmd = matches[i];
     if (!cmd) return;
     cmd.run(ctx);
-    onClose();
+    // Compose command toggles mode instead of closing — onClose for everything
+    // else. We detect by id so callers don't need to opt in.
+    if (cmd.id !== "compose-ai") onClose();
+  };
+
+  const submitCompose = async () => {
+    const prompt = composePrompt.trim();
+    if (!prompt) return;
+    setMode({ kind: "compose", submitting: true, error: null });
+    try {
+      await runCompose(prompt);
+      onClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMode({ kind: "compose", submitting: false, error: msg });
+    }
   };
 
   return (
@@ -212,82 +249,157 @@ export function CommandPalette({
       {/* No onMouseDown needed — outer div's `target === currentTarget`
           check already ensures clicks bubbling from here don't dismiss. */}
       <div className="w-[520px] max-w-[90vw] overflow-hidden rounded-[12px] border border-border-strong bg-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-          <Search className="lu" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            placeholder="명령 검색 · 노드 이름으로 jump…"
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setActiveIndex(0);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setActiveIndex((i) => Math.min(matches.length - 1, i + 1));
-              } else if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setActiveIndex((i) => Math.max(0, i - 1));
-              } else if (e.key === "Enter") {
-                e.preventDefault();
-                runAt(activeIndex);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                onClose();
-              }
-            }}
-            className="w-full bg-transparent font-mono text-sm text-text-primary outline-none placeholder:text-text-tertiary"
-          />
-          <span className="kbd">ESC</span>
-        </div>
+        {mode.kind === "commands" ? (
+          <>
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+              <Search className="lu" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                placeholder="명령 검색 · 노드 이름으로 jump…"
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setActiveIndex(0);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIndex((i) => Math.min(matches.length - 1, i + 1));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIndex((i) => Math.max(0, i - 1));
+                  } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    runAt(activeIndex);
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    onClose();
+                  }
+                }}
+                className="w-full bg-transparent font-mono text-sm text-text-primary outline-none placeholder:text-text-tertiary"
+              />
+              <span className="kbd">ESC</span>
+            </div>
 
-        <ul className="max-h-[40vh] overflow-y-auto py-1">
-          {matches.length === 0 ? (
-            <li className="px-4 py-6 text-center text-xs text-text-tertiary">일치하는 명령 없음</li>
-          ) : (
-            matches.map((c, i) => (
-              <li key={c.id}>
+            <ul className="max-h-[40vh] overflow-y-auto py-1">
+              {matches.length === 0 ? (
+                <li className="px-4 py-6 text-center text-xs text-text-tertiary">
+                  일치하는 명령 없음
+                </li>
+              ) : (
+                matches.map((c, i) => (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onClick={() => runAt(i)}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs ${
+                        i === activeIndex ? "bg-surface-3 text-text-primary" : "text-text-secondary"
+                      }`}
+                    >
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center"
+                        aria-hidden
+                      >
+                        {c.icon}
+                      </span>
+                      <span className="flex flex-1 items-center gap-2">
+                        <span>{c.label}</span>
+                        {c.hint ? (
+                          <span className="ml-auto font-mono text-[10px] text-text-tertiary">
+                            {c.hint}
+                          </span>
+                        ) : null}
+                      </span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+
+            <div className="flex items-center justify-between border-t border-border px-3 py-1.5 font-mono text-[10px] text-text-tertiary">
+              <span className="flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Weaver command palette
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="flex items-center gap-1">
+                  <span className="kbd">↑↓</span>navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="kbd">↵</span>run
+                </span>
+              </span>
+            </div>
+          </>
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+              <Sparkles className="lu text-weaver-indigo" />
+              <span className="font-mono text-xs text-text-secondary">Compose with AI</span>
+              <button
+                type="button"
+                onClick={() => setMode({ kind: "commands" })}
+                className="ml-auto btn btn-ghost btn-xs"
+              >
+                ← commands
+              </button>
+            </div>
+            <div className="p-4">
+              <label
+                htmlFor="compose-textarea"
+                className="block font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary"
+              >
+                자연어 지시
+              </label>
+              <textarea
+                id="compose-textarea"
+                ref={textareaRef}
+                aria-label="Compose prompt"
+                value={composePrompt}
+                onChange={(e) => setComposePrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    void submitCompose();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    onClose();
+                  }
+                }}
+                placeholder='예시: "add an agent node, connect webhook to new_agent"'
+                rows={4}
+                className="inp mono mt-1"
+              />
+              {mode.error ? (
+                <div className="help err mt-2">{mode.error}</div>
+              ) : (
+                <div className="help mt-2">⌘⏎ 로 바로 제출</div>
+              )}
+              <div className="mt-3 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onMouseEnter={() => setActiveIndex(i)}
-                  onClick={() => runAt(i)}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-xs ${
-                    i === activeIndex ? "bg-surface-3 text-text-primary" : "text-text-secondary"
-                  }`}
+                  onClick={onClose}
+                  className="btn btn-ghost btn-sm"
+                  disabled={mode.submitting}
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden>
-                    {c.icon}
-                  </span>
-                  <span className="flex flex-1 items-center gap-2">
-                    <span>{c.label}</span>
-                    {c.hint ? (
-                      <span className="ml-auto font-mono text-[10px] text-text-tertiary">
-                        {c.hint}
-                      </span>
-                    ) : null}
-                  </span>
+                  취소
                 </button>
-              </li>
-            ))
-          )}
-        </ul>
-
-        <div className="flex items-center justify-between border-t border-border px-3 py-1.5 font-mono text-[10px] text-text-tertiary">
-          <span className="flex items-center gap-1">
-            <Sparkles className="h-3 w-3" />
-            Weaver command palette
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <span className="kbd">↑↓</span>navigate
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="kbd">↵</span>run
-            </span>
-          </span>
-        </div>
+                <button
+                  type="button"
+                  aria-label="Submit compose prompt"
+                  onClick={() => void submitCompose()}
+                  disabled={mode.submitting || composePrompt.trim().length === 0}
+                  className="btn btn-primary btn-sm"
+                >
+                  {mode.submitting ? "생성 중…" : "Compose"}
+                  <ArrowRight className="lu" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <span className="sr-only">
         {canUndo ? "undo available" : ""}
