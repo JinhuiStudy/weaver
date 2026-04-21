@@ -56,46 +56,66 @@
 
 ---
 
-## 🚧 현재 진행 상황 (2026-04-21)
+## 🚀 현재 진행 상황 (2026-04-21 · Week 1 완료)
 
-> **Phase 1 — Scaffold & Core** 진행 중. Week 1 대부분의 목표가 이미 구현됨.
+> **Phase 1 core 완료 · 라이브 배포됨.** Runtime + Web 모두 Cloudflare Workers 에서 퍼블릭 동작.
+
+### 🌐 라이브 URL
+
+| 서비스 | URL | 스택 |
+|---|---|---|
+| **Runtime** | https://weaver-runtime.jinhuistudy.workers.dev | Hono 4 · D1 · Cron · Workers AI |
+| **Web (빌더)** | https://weaver-web.jinhuistudy.workers.dev | RR7 Framework Mode · Workers SSR |
 
 ### ✅ 완료된 것
 
-**`apps/web`** — React Router v7 on Cloudflare Pages
+**`apps/web` (배포됨)** — React Router v7 Framework Mode on Cloudflare Workers
 - Claude Design v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
 - 컴포넌트 라이브러리: `Button`(7 variant) · `Input` · `Badge` · `Card` · `Tabs` · `Kbd` · `Tooltip` · `Skeleton` · `Empty` · `Toast`
 - `WvNode` 캔버스 프리미티브 (5 type × 7 state) + xyflow `Handle` 통합
 - **`/` 홈 히어로** — 브랜드 워드마크 · 4노드 데모 스트립 · 피처 카드
-- **`/design` 쇼케이스** — 10개 섹션 (color · type · nodes · states · buttons · inputs · badges · tabs · cards · feedback)
-- **`/builder/:id` 빌더**
-  - 좌측 팔레트 → 캔버스 드래그&드롭 (5종 노드)
-  - 포트 드래그로 엣지 연결
-  - 우측 인스펙터 — label valibot 실시간 검증, body 편집, branch outputs chip 편집 (삭제 시 고아 엣지 cascade)
-  - **Yjs + y-indexeddb 로컬 영속** (새로고침 후 노드 위치/데이터 보존) · sync 상태 뱃지
+- **`/design` 쇼케이스** — 10개 섹션
+- **`/builder/:id` 빌더** — 팔레트 드래그&드롭 · 포트 엣지 연결 · 인스펙터 valibot 검증 · Yjs + y-indexeddb 로컬 영속 · 단축키 버튼화 · help 패널
+- **`/tools/:id/runs/:runId` Run 페이지** — 실행 상태 폴링
 
-**`packages/core`** — 공유 스키마 (순수 TS, zero React/DOM 의존)
-- 5개 노드 타입 **valibot** 스키마 (Input · Agent · Tool · Branch · Output)
-- Edge 연결 매트릭스 + 8 error variant validation
-- Graph DAG 검증 (DFS 사이클 감지 + 고립 노드 감지)
-- Vitest **36 테스트 통과**
+**`apps/runtime` (배포됨)** — Hono on Cloudflare Workers
+- `POST /api/compose` — 자연어 → graph diff (Workers AI 바인딩 + stub fallback)
+- `POST /api/runs` — D1 `agent_runs` INSERT · 그래프 스냅샷 저장
+- `scheduled()` handler — Cron `* * * * *` · pending/running 행 SELECT → `processPendingRuns` → UPDATE
+- `executor/step.ts` — state machine (input → agent → tool → branch → output)
+- `executor/agent.ts` — `runAgent` with `{{ input.field }}` interpolation (Workers AI or BYOK)
 
-**E2E (`apps/web/tests/`)** — Playwright
-- 5 시나리오: home/design/builder 렌더 · body 줄바꿈 · inspector 전환 · branch outputs cascade · label validation
-- 단계별 스크린샷을 `tests/screenshots/` 에 commit (시각적 회귀 확인)
+**`packages/core`** — 공유 스키마 (순수 TS, zero React/DOM)
+- 5개 노드 타입 valibot 스키마 · Edge 연결 매트릭스 · Graph DAG 검증
+- **100+ tests**
+
+**테스트 종합 (총 179+)**
+- `packages/core` Vitest 단위: 100+
+- `apps/runtime` Vitest 단위: 37 (stub parser · executor/step · runAgent · cron)
+- `apps/runtime` vitest-pool-workers 통합: 7 (api-runs 4 + cron 3, 실제 miniflare D1)
+- `apps/web` Playwright e2e: 42 (스크린샷 commit)
+
+**프로덕션 E2E 검증됨**
+- `POST /api/runs` → D1 `pending` row 저장
+- Cron tick → `running(in)` → `running(out)` → `complete`, `completed_at` 기록
+- run id `c325ba1e-b79b-483b-8557-d6c1b8dd19d8` 로 확인
 
 **Infra**
-- pnpm workspace · biome 2.4 · tsconfig strict
-- GitHub Actions 워크플로우 (typecheck/lint/build)
-- 커밋·푸시 히스토리: [`github.com/JinhuiStudy/weaver`](https://github.com/JinhuiStudy/weaver) (private)
+- pnpm workspace · biome 2.4 · tsconfig strict · TypeScript 0 에러
+- Doppler Free plan `weaver` project (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` 등)
+- D1 `weaver-db` remote 프로비저닝 · migrations 0001+0002 적용
+- Cloudflare 계정: `cleanjhpark@gmail.com`
+- GitHub Actions 워크플로우 (typecheck/lint/build/e2e)
+- Repo: [`JinhuiStudy/weaver`](https://github.com/JinhuiStudy/weaver) (private)
 
-### 🔜 다음 (Phase 1 잔여)
+### 🔜 다음 (`docs/NEXT.md` 참조)
 
-- **Week 3 — NL Composer** — `apps/runtime` Hono 스캐폴드 + `/api/compose` 자연어→diff (Workers AI)
-- **Week 4 — Agent Runtime α** — D1 `agent_runs` 스키마 + Cron + self-fetch 패턴
-- **Week 5-6 — OTEL + Trace Viewer** — Axiom Free 통합
+- **OTEL + Trace Viewer** — Axiom Free ingest + `/tools/:id/runs/:runId` 실시간 재생
+- **BYOK UX + 모델 선택 UI** — Claude/OpenAI 키 저장, 노드별 모델 지정
+- **Eval α** — `packages/eval` DSL 파서 + 데이터셋 업로드 + accuracy/cost report
+- **Tool registry** — HTTP/SQL tool definition + secret 주입
 
-전체 로드맵: [`docs/ROADMAP.md`](./docs/ROADMAP.md)
+전체 로드맵: [`docs/ROADMAP.md`](./docs/ROADMAP.md) · 세부 우선순위: [`docs/NEXT.md`](./docs/NEXT.md)
 
 ---
 
@@ -135,7 +155,7 @@ pnpm --filter=@weaver/web test:e2e:ui    # Playwright UI 모드
 ```
 weaver/
 ├── apps/
-│   ├── web/              # ✅ 빌더 UI — RR7 + Cloudflare Pages
+│   ├── web/              # ✅ 빌더 UI — RR7 + Cloudflare Workers (배포됨)
 │   │   ├── app/
 │   │   │   ├── routes/          # home · design · builder.$id
 │   │   │   ├── components/
@@ -147,11 +167,11 @@ weaver/
 │   │   │   │   └── useCanvasPersistence.ts
 │   │   │   └── styles/tokens.css # 420+ 디자인 토큰
 │   │   └── tests/         # Playwright + screenshots
-│   ├── runtime/           # 🔜 Hono on Workers + Cron
+│   ├── runtime/           # ✅ Hono on Workers + D1 + Cron (배포됨)
 │   └── docs-site/         # 🔜 Astro (Week 13)
 │
 ├── packages/
-│   ├── core/              # ✅ valibot 스키마 · DAG 검증 · 36 tests
+│   ├── core/              # ✅ valibot 스키마 · DAG 검증 · 100+ tests
 │   ├── canvas/            # 🔜 xyflow 노드 재사용 컴포넌트
 │   ├── runtime/           # 🔜 AgentExecutor
 │   ├── observability/     # 🔜 OTEL exporter + Trace Viewer

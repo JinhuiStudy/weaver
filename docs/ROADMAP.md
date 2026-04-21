@@ -1,71 +1,69 @@
 # Roadmap — 14주 주차별 마일스톤 ($0 Free-tier)
 
-> **시작 기준**: 2026-W17 (2026-04-27) 첫 커밋
+> **시작 기준**: 2026-W17 (2026-04-27) 첫 커밋 — 실제로는 2026-04-21 early start
 > **런칭 목표**: Week 14 = 2026-W30
 > **예산**: $0 (ADR-006)
+> **현재 (2026-04-21)**: **Week 1 + Week 3 + Week 4 코어 완료 · 라이브 배포됨**
 >
-> **실제 실행 시**:
-> - 최초 1회 세팅 → [`KICKOFF.md`](./KICKOFF.md) (Phase A–E, ~3시간)
-> - Week 1 Day-by-Day → [`WEEK-1-PLAN.md`](./WEEK-1-PLAN.md)
+> - Runtime: https://weaver-runtime.jinhuistudy.workers.dev
+> - Web: https://weaver-web.jinhuistudy.workers.dev
+>
+> **다음 단계**: [`NEXT.md`](./NEXT.md) 참조.
 
 ---
 
 ## Phase 1 — Scaffold & Core (Week 1-4)
 
-### Week 1 · "Hello Canvas"
+### Week 1 · "Hello Canvas" ✅ **완료**
 **목표**: 레포 초기화 + **디자인 토큰 주입** + 빈 캔버스 노드 드래그
 
-- [ ] pnpm workspaces 설정
-- [ ] **`example/design/tokens.css` → `apps/web/app/styles/tokens.css` import, Tailwind v4 `@theme` 바인딩**
-- [ ] Inter + JetBrains Mono 웹폰트 로드
-- [ ] `apps/web` — RR7 Framework Mode + Tailwind 4 + shadcn/ui 초기 3 컴포넌트 (Button · Input · Card) 토큰 기반 재스타일
-- [ ] `apps/web` — xyflow 통합, 빈 canvas backdrop(24px dot grid) + Agent 노드 1개 드래그
-- [ ] `packages/core` — Node·Edge·Graph 기본 타입 (valibot)
-- [ ] Vitest + Playwright 스캐폴드
-- [ ] **GitHub Actions** 기본 파이프라인 (typecheck, biome, vitest, build)
-- [ ] Cloudflare Pages 최초 배포 — `weaver.pages.dev`
+- [x] pnpm workspaces 설정
+- [x] **`example/design/tokens.css` → `apps/web/app/styles/tokens.css` import, Tailwind v4 `@theme` 바인딩**
+- [x] Inter + JetBrains Mono 웹폰트 로드
+- [x] `apps/web` — RR7 Framework Mode + Tailwind 4 + shadcn/ui 초기 컴포넌트 (Button · Input · Card · Badge · Tabs · Kbd · Tooltip · Skeleton · Empty · Toast) 토큰 기반 재스타일
+- [x] `apps/web` — xyflow 통합, 빈 canvas backdrop(24px dot grid) + 5종 노드 드래그
+- [x] `packages/core` — Node·Edge·Graph 기본 타입 (valibot)
+- [x] Vitest + Playwright 스캐폴드
+- [x] **GitHub Actions** 기본 파이프라인 (typecheck, biome, vitest, build)
+- [x] Cloudflare Workers 최초 배포 — `weaver-web.jinhuistudy.workers.dev` *(Pages 대신 Workers 선택 · RR7 Framework Mode 호환)*
 
-**산출물**: `https://weaver.pages.dev` 접속 → 빈 캔버스 + 노드 드래그. **비용 $0.**
+**산출물**: https://weaver-web.jinhuistudy.workers.dev 접속 → 빈 캔버스 + 노드 드래그. **비용 $0.** ✅
 
-### Week 2 · "노드 프리미티브 5종 + 디자인 적용"
+### Week 2 · "노드 프리미티브 5종 + 디자인 적용" ✅ **대부분 완료**
 
-- [ ] `packages/core` — Input/Agent/Tool/Branch/Output valibot 스키마 (`specs/node-types.md`)
-- [ ] `apps/web/components/canvas/nodes/` — 5 노드 컴포넌트
-  - Anatomy: type dot(6×6) + kicker(9 mono UPPERCASE) + label(13/600) + divider + body(11 mono)
-  - Border: `color-mix(in srgb, var(--node-color) 40%, var(--border-strong))`
-  - 7 상태(default/hover/selected/running/error/warning/disabled/ok) 구현
-- [ ] 엣지: default/selected/flowing(dashed anim)/error 4 타입
-- [ ] Port: 10×10 · 5 상태 (empty/connected/hover/dragging/invalid)
-- [ ] 노드 속성 사이드 패널 + Monaco 에디터 + kbd 힌트
-- [ ] 캔버스 상태 Zustand + **y-indexeddb 로컬 영속**
-- [ ] D1 테이블 생성 (`canvas_snapshots`, `tools`, `tool_versions`)
+- [x] `packages/core` — Input/Agent/Tool/Branch/Output valibot 스키마
+- [x] `apps/web/components/canvas/nodes/` — 5 노드 컴포넌트 (7 상태)
+- [x] 엣지: default/selected/flowing/error 4 타입
+- [x] Port: 10×10 · 5 상태
+- [x] 노드 속성 사이드 패널 + 실시간 valibot 검증 + kbd 힌트
+- [x] 캔버스 상태 Zustand + **y-indexeddb 로컬 영속**
+- [ ] D1 테이블 `canvas_snapshots`, `tools`, `tool_versions` *(현재는 agent_runs만 · 툴 영속화 Phase 2)*
+- [ ] Monaco 에디터 통합 *(현재 textarea · 대형 에이전트 프롬프트용 upgrade 예정)*
 
-**산출물**: 5 노드 드래그·연결·편집·저장. 새로고침해도 로컬 보존.
+**산출물**: 5 노드 드래그·연결·편집·저장. 새로고침해도 로컬 보존. ✅
 
-### Week 3 · "NL Composer — Workers AI로 자연어 생성"
+### Week 3 · "NL Composer — Workers AI로 자연어 생성" ✅ **코어 완료**
 
-- [ ] `apps/runtime` — Hono app 스캐폴드, Worker 엔트리
-- [ ] `/api/compose` 엔드포인트
-- [ ] **Workers AI 바인딩** (Llama 3.3 70B 기본 모델)
-- [ ] BYOK 경로 (유저가 Claude/OpenAI 키 입력 시 라우팅)
-- [ ] System prompt: 현재 그래프 JSON + 유저 입력 → diff JSON
-- [ ] Frontend DiffPreview UI
-- [ ] 수락 시 Zustand + Y.Doc apply
+- [x] `apps/runtime` — Hono app 스캐폴드, Worker 엔트리
+- [x] `/api/compose` 엔드포인트 · Workers AI 바인딩 · offline stub fallback
+- [x] System prompt: 현재 그래프 + 유저 입력 → intent (canvas diff)
+- [ ] BYOK 경로 (Claude/OpenAI API 키 저장 UI) → Phase 2
+- [ ] Frontend DiffPreview UI · 수락 시 Zustand apply → Phase 2
 
-**산출물**: "환불 신청 처리 에이전트 만들어줘" → 4 노드 자동 생성 **(Workers AI 무료)**.
+**산출물**: `POST /api/compose` live. NL → graph intent 동작 ✅ (**Workers AI 무료**). UI 통합은 Phase 2.
 
-### Week 4 · "에이전트 런타임 α — D1 + Cron"
+### Week 4 · "에이전트 런타임 α — D1 + Cron" ✅ **코어 완료**
 
-- [ ] D1 스키마: `agent_runs`, `run_history`
-- [ ] `apps/runtime/executor/step.ts` — `executeOneStep()`
-- [ ] `apps/runtime/cron.ts` — scheduled handler (매 1분)
-- [ ] Self-fetch 패턴 (`ctx.waitUntil(fetch(/internal/step))`)
-- [ ] Workers AI LLM 어댑터
-- [ ] HTTP 툴 1개 (빌트인)
-- [ ] SSE `/api/runs/:id/stream` (D1 row 1s 폴링 기반)
-- [ ] Frontend: Trace 패널 실시간 업데이트
+- [x] D1 스키마: `agent_runs`, `run_history` (migrations 0001, 0002)
+- [x] `apps/runtime/executor/step.ts` — `executeOneStep()` state machine
+- [x] `apps/runtime/src/index.ts` `scheduled()` — 매 1분, 그래프 스냅샷 기반
+- [x] Workers AI LLM 어댑터 (`executor/agent.ts` · `{{ input.field }}` interpolation)
+- [x] **프로덕션 E2E 검증됨** — pending → running → complete via real cron
+- [ ] HTTP 툴 1개 (빌트인) → Phase 2 (`packages/core` tool registry)
+- [ ] SSE `/api/runs/:id/stream` → Phase 2 (현재 RR7 page loader 폴링)
+- [ ] Frontend Trace 패널 실시간 업데이트 → Phase 2 (OTEL 붙일 때)
 
-**산출물**: 환불 에이전트 실행 → 캔버스 옆 패널 실시간 노드 진행 표시.
+**산출물**: `POST /api/runs` → Cron → D1 UPDATE, end-to-end 라이브 동작 ✅
 
 ---
 

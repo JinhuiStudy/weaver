@@ -1,99 +1,72 @@
 # @weaver/runtime-edge
 
-> 에이전트 런타임 — **Cloudflare Workers Free + D1 + Cron Triggers** (Durable Objects 없음)
+> **에이전트 런타임 — Cloudflare Workers + D1 + Cron Triggers** (Durable Objects 없음)
 
-## 책임
+## 상태 (2026-04-21)
 
-1. **Hono app** — API 엔드포인트 (`/runs`, `/canvas`, `/compose`, `/eval`, `/deploy`)
-2. **Agent Run 실행** — D1 `agent_runs` 레코드 단위, Cron + self-fetch 이중 실행
-3. **LLM 라우팅** — Workers AI (기본) + 유저 BYOK (Claude/OpenAI)
-4. **Tool Registry 실행** — HTTP / SQL / Slack / Stripe + 커스텀
-5. **OTEL 계측** — Axiom Free 로 trace 전송
-6. **Cron** — 매 1분 pending run 처리
+🚀 **라이브 배포**: https://weaver-runtime.jinhuistudy.workers.dev
+
+| 바인딩 | 리소스 |
+|---|---|
+| `AI` | Workers AI (10k neurons/day 무료) |
+| `DB` | D1 `weaver-db` (`a07b1744-70c6-4e5c-9934-41ac804a24cc`) |
+| Cron | `* * * * *` (매 1분) |
+
+## 엔드포인트
+
+| Method · Path | 역할 |
+|---|---|
+| `GET /health` | `{ ok: true, version: "0.0.0" }` |
+| `POST /api/compose` | NL prompt + canvas snapshot → graph diff (Workers AI 또는 offline stub) |
+| `POST /api/runs` | `agent_runs` INSERT · 그래프 스냅샷 저장 · `{ id, status: "pending" }` 반환 |
+
+## `scheduled()` 흐름
+
+1. D1 에서 `status IN ('pending','running')` 행 최대 10개 SELECT (`next_step_at` 필터)
+2. `graph_json` 으로 버킷팅 → 그래프별 `processPendingRuns` 호출
+3. 각 run 한 스텝 진행 → `status / current_node_id / state / completed_at` UPDATE
+
+핵심 파일: [`src/index.ts`](./src/index.ts), [`src/executor/step.ts`](./src/executor/step.ts), [`src/cron.ts`](./src/cron.ts)
+
+## 개발
+
+```bash
+# 로컬 개발 (miniflare + D1)
+doppler run --project weaver --config dev -- pnpm exec wrangler dev --port 8787 --local
+
+# 테스트
+pnpm test:run          # 단위 (vitest)
+pnpm test:integration  # 통합 (vitest-pool-workers + miniflare D1)
+
+# 배포
+doppler run --project weaver --config dev -- pnpm exec wrangler deploy
+```
+
+## 마이그레이션
+
+```bash
+# 로컬 (miniflare)
+wrangler d1 execute weaver-db --local --file=migrations/0001_agent_runs.sql
+wrangler d1 execute weaver-db --local --file=migrations/0002_graph_snapshot.sql
+
+# 리모트 (프로덕션) — Doppler 필수
+doppler run --project weaver --config dev -- pnpm exec wrangler d1 execute weaver-db --remote --file=migrations/0001_agent_runs.sql
+doppler run --project weaver --config dev -- pnpm exec wrangler d1 execute weaver-db --remote --file=migrations/0002_graph_snapshot.sql
+```
 
 ## 왜 Durable Objects 안 쓰나
 
-Workers Paid $5/월 필수. ADR-006 "Free-tier First" 정책에 따라 D1 + Cron + self-fetch로 대체.
-자세히: [ADR-002](../../docs/decisions/ADR-002-runtime-d1-cron.md)
+Workers Paid $5/월 필수. ADR-006 "Free-tier First" 정책. D1 + Cron + self-fetch 로 대체.
 
-## 개발 예정 구조
+자세히: [`../../docs/decisions/ADR-002-runtime-d1-cron.md`](../../docs/decisions/ADR-002-runtime-d1-cron.md)
 
-```
-apps/runtime/
-├── src/
-│   ├── index.ts                    # Hono + Cron export
-│   ├── routes/
-│   │   ├── runs.ts                 # POST /runs · GET /runs/:id/stream
-│   │   ├── canvas.ts               # PUT /canvas/:id/snapshot
-│   │   ├── compose.ts              # POST /api/compose (NL → nodes)
-│   │   ├── eval.ts                 # POST /eval/run
-│   │   └── deploy.ts               # POST /deploy/promote
-│   ├── cron.ts                     # scheduled handler
-│   ├── executor/
-│   │   ├── step.ts                 # executeOneStep()
-│   │   ├── graph.ts                # 다음 노드 계산
-│   │   └── self-fetch.ts           # ctx.waitUntil(fetch) 패턴
-│   ├── llm/
-│   │   ├── router.ts               # Workers AI + BYOK
-│   │   ├── adapters/
-│   │   │   ├── workersai.ts        # Cloudflare Workers AI
-│   │   │   ├── anthropic.ts        # Claude (BYOK)
-│   │   │   └── openai.ts           # OpenAI (BYOK)
-│   │   ├── cache.ts                # Claude prompt caching
-│   │   └── cost.ts                 # neurons / tokens → USD
-│   ├── tools/
-│   │   ├── registry.ts
-│   │   ├── permission.ts
-│   │   └── builtin/{http,sql,slack,stripe}.ts
-│   └── otel/
-│       ├── tracer.ts               # minimal OTEL SDK
-│       └── axiom.ts                # OTLP/HTTP → Axiom Free
-├── wrangler.toml
-├── package.json
-└── tsconfig.json
-```
+## 다음 개발 (Phase 1 잔여 + Phase 2)
 
-## wrangler.toml 예시 (핵심)
-
-```toml
-name = "weaver-runtime"
-main = "src/index.ts"
-compatibility_date = "2026-04-20"
-compatibility_flags = ["nodejs_compat"]
-
-[ai]
-binding = "AI"                      # Workers AI (무료 10k neurons/day)
-
-[[d1_databases]]
-binding = "DB"
-database_name = "weaver-db"
-
-[[r2_buckets]]
-binding = "FILES"
-bucket_name = "weaver-files"
-
-[[kv_namespaces]]
-binding = "FLAGS"
-id = "..."
-
-[[analytics_engine_datasets]]
-binding = "ANALYTICS"
-dataset = "weaver_counters"
-
-[triggers]
-crons = ["* * * * *"]              # 매 1분
-
-[vars]
-INTERNAL_URL = "https://weaver-runtime.your-subdomain.workers.dev"
-
-# AXIOM_TOKEN, SENTRY_DSN, INTERNAL_TOKEN 은 wrangler secret put 으로
-```
-
-## 상태
-
-📦 빈 디렉토리. Week 3 (2026-W19) Hono 엔트리 + Week 4 Cron + executor 시작.
+- **OTEL tracer** (`src/otel/`) — Axiom Free OTLP/HTTP exporter
+- **Tool Registry** (`src/tools/`) — HTTP · SQL · Slack · Stripe + permission 체크
+- **Error handling** — failed run retry · `retry_count` 기반 backoff
+- **`GET /runs/:id/stream`** — SSE for live trace UI
 
 참고:
 - [`../../docs/ARCHITECTURE.md#2-agent-runtime`](../../docs/ARCHITECTURE.md)
-- [`../../docs/decisions/ADR-002-runtime-d1-cron.md`](../../docs/decisions/ADR-002-runtime-d1-cron.md)
-- [`../../docs/decisions/ADR-006-free-tier-first.md`](../../docs/decisions/ADR-006-free-tier-first.md)
+- [`../../docs/NEXT.md`](../../docs/NEXT.md) — 지금 해야 할 작업

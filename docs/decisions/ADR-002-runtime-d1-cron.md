@@ -1,8 +1,9 @@
 # ADR-002 — Agent Runtime: D1 + Cron Triggers (not Durable Objects)
 
-- **상태**: 재작성 (2026-04-21)
+- **상태**: ✅ Implemented (2026-04-21) · 라이브 배포됨
 - **Supersedes**: 초기 DO 기반 설계
 - **관련**: ADR-006 (Free-tier First), ARCHITECTURE §2
+- **구현**: `apps/runtime/src/index.ts` (`scheduled()` + `tickOnce`), `executor/step.ts`, migrations 0001+0002
 
 ## 맥락
 

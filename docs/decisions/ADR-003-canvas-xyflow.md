@@ -1,6 +1,6 @@
 # ADR-003 — Canvas: xyflow (React Flow)
 
-- **상태**: 수락 (2026-04-21)
+- **상태**: ✅ Implemented (2026-04-21) · `apps/web/app/components/canvas/`
 - **관련**: ARCHITECTURE §1, PRODUCT §3.2
 
 ## 맥락

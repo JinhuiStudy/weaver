@@ -1,7 +1,8 @@
 # ADR-004 — Collaboration: Yjs Local-first → Phase 2 Real-time
 
-- **상태**: 재작성 (2026-04-21)
+- **상태**: ✅ Phase 1 Implemented (local-first only, 2026-04-21) · 실시간은 post-launch
 - **관련**: ADR-006 (Free-tier First), ARCHITECTURE §1, PRODUCT §1 (Feature ③)
+- **구현**: `apps/web/app/lib/yjs-provider.ts`, `useCanvasPersistence.ts`
 
 ## 맥락
 

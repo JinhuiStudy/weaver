@@ -1,7 +1,12 @@
 # Week 1 Plan — Day-by-Day
 
+> ✅ **완료됨 (2026-04-21)**. 실제로는 Week 2/3/4 스코프까지 같은 주에 진행.
+> 현재 상태: 라이브 배포 · 프로덕션 E2E 검증 완료. 다음 우선순위는 [`NEXT.md`](./NEXT.md).
+>
+> 이 문서는 **참고용 기록**으로 보존. 앞으로 Day 루틴은 [`NEXT.md`](./NEXT.md) 참조.
+
 > **전제**: [`KICKOFF.md`](./KICKOFF.md) 완료 상태 (Phase A-E).
-> **목표 (Week 1 끝)**: 빈 xyflow 캔버스에 Agent 노드 1개 드래그, tokens.css 완전 적용, 로컬 + 프로덕션 배포 동기화.
+> **목표 (Week 1 끝)**: 빈 xyflow 캔버스에 Agent 노드 1개 드래그, tokens.css 완전 적용, 로컬 + 프로덕션 배포 동기화. ✅
 
 ## 🧭 매일 시작 전 3분 루틴
 
