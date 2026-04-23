@@ -1,6 +1,6 @@
 # NEXT — 실행 계획 (Evolving Agent Network · 유저 $0 · 운영 $0)
 
-> **버전**: 2026-04-22 (v2 · ADR-007 피봇 반영)
+> **버전**: 2026-04-23 (v3 · Sprint 0 완료 반영)
 > **제품 한 줄**: Fork agents. Rate them. They evolve. Free forever.
 > **타겟**: 개인 개발자 · 메이커 · 학생 · 크리에이터 (기업 아님)
 > **예산**: 운영 $0 · 유저 $0 · 개인 개발도구는 예외 (ADR-006 §6)
@@ -10,7 +10,7 @@
 
 ---
 
-## 0. 현재 상태 (2026-04-22)
+## 0. 현재 상태 (2026-04-23)
 
 ### 라이브
 - **Runtime**: https://weaver-runtime.jinhuistudy.workers.dev (Hono + D1 + Cron + Workers AI)
@@ -18,17 +18,35 @@
 
 ### 작동 중
 - NL → graph intent (`POST /api/compose`, Workers AI + stub fallback)
-- Run 생성 · 그래프 스냅샷 영속 (`POST /api/runs` → D1)
+- Run 생성 · 그래프 스냅샷 영속 (`POST /api/runs` → D1, session 필수)
 - Cron 자동 실행 (`* * * * *` · state machine step)
 - 빌더 캔버스 (드래그 · 연결 · 인스펙터 · Yjs 로컬 영속)
+- **Sprint 0 완료** — GitHub OAuth · 멀티테넌트 · per-user rate limit (D1-D5, 커밋 `8078af8`)
 
-### 테스트 179+ 개 · 프로덕션 E2E 검증된 run: `c325ba1e-b79b-483b-8557-d6c1b8dd19d8`
+### 테스트 (2026-04-23 기준)
+- core 단위 145 · runtime 단위 55 · runtime integration 33
+- web e2e 44 (login · builder · regression)
+- 총 277개 — 전부 green
 
 ### 계정/시크릿
 - Cloudflare: `cleanjhpark@gmail.com` · Account `590c528f54d00045d032196dd7333d9b`
 - D1 `weaver-db` (`a07b1744-70c6-4e5c-9934-41ac804a24cc`)
-- Doppler Free · `weaver` project
+- Doppler Free · `weaver` project (dev + prd: `GITHUB_OAUTH_CLIENT_ID/SECRET`, `WEAVER_SESSION_SECRET`, `WEAVER_KEK`)
 - GitHub: `JinhuiStudy/weaver` (private)
+
+### Sprint 0 배포 전 유저 작업
+1. **GitHub OAuth app callback URL 교체** (기존 `/auth/github/callback` on runtime → web):
+   - Dev app: `http://localhost:5173/auth/github/callback`
+   - Prd app: `https://weaver-web.jinhuistudy.workers.dev/auth/github/callback`
+2. **프로덕션 wrangler secret 주입**:
+   ```bash
+   for K in GITHUB_OAUTH_CLIENT_ID GITHUB_OAUTH_CLIENT_SECRET WEAVER_SESSION_SECRET WEAVER_KEK; do
+     doppler secrets get $K --plain --project weaver --config prd |
+       pnpm --filter=@weaver/runtime exec wrangler secret put $K
+   done
+   ```
+3. `pnpm --filter=@weaver/runtime exec wrangler deploy`
+4. `pnpm --filter=@weaver/web exec wrangler deploy --env production` (RUNTIME_URL=runtime worker URL)
 
 ---
 
@@ -83,12 +101,12 @@ Weaver 가 Cloudflare/Axiom/Resend 등에 내는 **월 청구서 $0**.
 
 ---
 
-## 2. 14주 계획 (Week 5-14 · W1-4 이미 완료)
+## 2. 14주 계획 (Week 6-14 · W1-5 완료)
 
 | W | 주제 | Sprint | Exit |
 |---|---|---|---|
 | W1-4 | ✅ 코어 런타임 + 캔버스 + D1 + Cron + 배포 | - | Done |
-| W5 | Sprint 0 · 인증 + per-user rate limit | 2 PR | GitHub 로그인 · 익명 401 · 유저당 cap |
+| W5 | ✅ Sprint 0 · 인증 + per-user rate limit | 5 commits | GitHub 로그인 · 익명 401 · 유저당 cap — 완료 `8078af8` |
 | W6 | Sprint 1 · Agent 공개 모델 · 슬러그 URL · Fork | 2 PR | `weaver-web.../@user/agent-slug` 작동 · Fork 버튼 |
 | W7 | Sprint 2 · OTEL + 비용 추적 + Run viewer | 2 PR | Axiom trace · run 페이지에 waterfall |
 | W8 | Sprint 3 · Agent feed · 구독 · 검색 (Vectorize) | 2 PR | RSS-style feed · 검색 · tag |
@@ -101,73 +119,21 @@ Weaver 가 Cloudflare/Axiom/Resend 등에 내는 **월 청구서 $0**.
 
 ---
 
-## Sprint 0 — 인증 · 멀티테넌트 · 유저별 Rate Limit (W5, 5일)
+## Sprint 0 ✅ 완료 (2026-04-23)
 
-### 왜
-- 익명 `/api/runs` 가 Free tier 한도를 스팸으로 태울 수 있음
-- Agent 를 "내 것" 으로 만들려면 유저 식별 필수
-- Fork · rating · subscription 모두 유저 단위
+커밋: `04fe53c` (D1) · `23a73a7` (D2) · `bbd4f06` (D3) · `5a70d3f` (D4) · `8078af8` (D5).
 
-### 기술 선택
-- **GitHub OAuth primary** ($0 · 무제한 · 타겟과 일치)
-- **Magic link (Resend Free 3k/월)** → W13 까지 선택, 지금은 GitHub only
-- JWT HS256 + HttpOnly 쿠키 · stateless
-- Cross-origin: web → runtime 서버 프록시 (쿠키의 JWT 를 `X-Weaver-Session` 헤더로 전달)
+### 달성
+- D1 migration `0003_auth.sql` — users · orgs · memberships · rate_limits + `agent_runs.created_by_user_id`
+- `packages/core`: ULID (Web Crypto) · HandleSchema · User/Org/Membership valibot
+- `apps/runtime/src/auth/`: jwt (HS256) · github (OAuth) · upsert · routes (`/auth/github` + callback + logout) · middleware (session 주입 + requireAuth) · rate-limit (per-user daily cap)
+- `apps/web`: `/login` 페이지 · `useSession` hook · workers `/auth|/api` 프록시 · 헤더 avatar/로그아웃
+- 테스트: core 145 · runtime unit 55 · runtime integration 33 · web e2e 44 → **277 total · all green**
 
-### D1 스키마 (migration `0003_auth.sql`)
-
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  github_id INTEGER UNIQUE,
-  handle TEXT NOT NULL UNIQUE,        -- public handle, e.g. "jinhui" → @jinhui/...
-  email TEXT,                          -- nullable (GitHub private email)
-  name TEXT,
-  avatar_url TEXT,
-  created_at INTEGER NOT NULL,
-  last_seen_at INTEGER
-);
-
--- 개인 워크스페이스 (첫 로그인 시 자동 생성, 1 user = 1 default org)
-CREATE TABLE orgs (
-  id TEXT PRIMARY KEY,
-  slug TEXT NOT NULL UNIQUE,
-  name TEXT NOT NULL,
-  owner_user_id TEXT NOT NULL REFERENCES users(id),
-  created_at INTEGER NOT NULL
-);
-
-CREATE TABLE memberships (
-  user_id TEXT NOT NULL REFERENCES users(id),
-  org_id TEXT NOT NULL REFERENCES orgs(id),
-  role TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (user_id, org_id)
-);
-
--- 유저별 일일 cap 추적 (sliding window)
-CREATE TABLE rate_limits (
-  user_id TEXT NOT NULL,
-  resource TEXT NOT NULL,              -- 'worker_req' | 'ai_neurons' | 'd1_writes'
-  window_start INTEGER NOT NULL,       -- day bucket (Unix day)
-  count INTEGER NOT NULL DEFAULT 0,
-  PRIMARY KEY (user_id, resource, window_start)
-);
-```
-
-### Tasks (Day-by-Day)
-
-- **D1**: migration · JWT 라이브러리 (`apps/runtime/src/auth/jwt.ts` · Web Crypto HMAC) · Doppler secrets 4개 (`GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `WEAVER_SESSION_SECRET`, `WEAVER_KEK`)
-- **D2**: GitHub OAuth App 2개 (dev / prod) · `/auth/github` `/auth/callback` · `upsertUserFromGithub` (첫 로그인 시 `{github_login}-personal` org 자동 생성, 슬러그 충돌시 `-2`)
-- **D3**: Hono middleware · `/api/me` · body `org_id` override 방지
-- **D4**: `/login` 페이지 · `useSession()` hook · loader 가드 · 아바타 뱃지 · 로그아웃 (스크린샷 4장)
-- **D5**: Rate limiter (D1 + KV 하이브리드) · Workers AI neurons 사용 추적 · 배포 · 스모크
-
-### Exit
-- 익명 `/api/runs` → 401
-- GitHub 로그인 후 동일 호출 → 200, row 에 `created_by`/`org_id` 정확
-- 유저당 일 10 run 초과 시 429 · Retry-After 헤더
-- 유닛/통합/e2e 전부 그린
+### Sprint 1 로 이월된 항목
+- **Hard guard**: 빌더 loader 에서 익명 → `/login` redirect. 로컬 dev 에서 runtime 워커를 상시 띄우는 방식을 정하면 재활성화 (loader side fetch 가능하게).
+- **Workers AI neurons 추적**: Sprint 2 (W7) observability 와 합쳐서. 현재 `rate_limits.resource` 는 `runs` 만 사용.
+- **BYOK 흐름**: WEAVER_KEK 은 주입해뒀지만 아직 encrypt/decrypt 없음 — 유저 setting 페이지와 함께.
 
 ---
 
