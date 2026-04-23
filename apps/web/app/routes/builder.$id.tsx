@@ -12,7 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, redirect, useNavigate } from "react-router";
 import { CommandPalette } from "~/components/canvas/CommandPalette";
 import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
@@ -22,12 +22,19 @@ import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
 import { loadCanvasFromFile } from "~/lib/importGraph";
 import { createRun } from "~/lib/runs";
+import { loadSessionServer } from "~/lib/session.server";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
 
 export function meta({ params }: Route.MetaArgs) {
   return [{ title: `Weaver · ${params.id} · builder` }];
+}
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const session = await loadSessionServer(request, context.cloudflare.env);
+  if (!session) throw redirect("/login");
+  return { session };
 }
 
 const demoNodes: CanvasNode[] = [
@@ -148,6 +155,42 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
       console.error("run failed", err);
     } finally {
       setRunning(false);
+    }
+  }, [params.id, navigate]);
+
+  const [publishing, setPublishing] = useState(false);
+  const onPublish = useCallback(async () => {
+    const name = window.prompt(
+      "Agent 이름을 입력하세요 (예: HN Summary). 슬러그는 자동으로 생성됩니다.",
+    );
+    if (!name) return;
+    const state = useCanvas.getState();
+    const definition = {
+      tool_id: params.id,
+      nodes: state.nodes,
+      edges: state.edges,
+    };
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, definition }),
+      });
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(`POST /api/agents failed (${res.status}): ${msg}`);
+      }
+      navigate("/");
+    } catch (err) {
+      console.error("publish failed", err);
+      window.alert(`저장 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setPublishing(false);
     }
   }, [params.id, navigate]);
 
@@ -304,6 +347,16 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           <Button variant="outlined" size="sm" leftIcon={<Save className="lu" />} onClick={onSave}>
             Save
             <Kbd className="ml-1">⌘S</Kbd>
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onPublish}
+            loading={publishing}
+            disabled={publishing}
+            data-testid="save-to-workspace"
+          >
+            Save to workspace
           </Button>
           <Button
             variant="primary"

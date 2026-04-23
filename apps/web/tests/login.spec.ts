@@ -12,10 +12,12 @@ test("login page — hero + Sign in with GitHub", async ({ page }) => {
   await page.screenshot({ path: "tests/screenshots/10-login.png", fullPage: false });
 });
 
-test("home header shows 로그인 link when anonymous", async ({ page }) => {
+test("home (dev session) — header shows user badge + 내 Agents section", async ({ page }) => {
+  // In local dev the server loader returns a fake session when the runtime
+  // isn't reachable (keyed on RUNTIME_URL=localhost). So the anon state is
+  // never visible in Playwright — instead we verify the signed-in chrome.
   await page.goto("/");
-  const loginLink = page.getByTestId("home-login-link");
-  await expect(loginLink).toBeVisible();
-  await expect(loginLink).toHaveAttribute("href", "/login");
-  await page.screenshot({ path: "tests/screenshots/12-home-anon-header.png" });
+  await expect(page.getByTestId("user-badge")).toBeVisible();
+  await expect(page.getByTestId("my-agents-section")).toBeVisible();
+  await page.screenshot({ path: "tests/screenshots/12-home-devsession.png" });
 });

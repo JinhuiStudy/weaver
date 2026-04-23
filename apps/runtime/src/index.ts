@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { handleCreateAgent, handleListAgents } from "./api/agents";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
 import { requireRateLimit } from "./auth/rate-limit";
 import { mountAuthRoutes } from "./auth/routes";
@@ -39,6 +40,9 @@ app.get("/", (c) => c.text("weaver-runtime ok"));
 app.get("/health", (c) => c.json({ ok: true, version: "0.0.0" }));
 
 mountAuthRoutes(app);
+
+app.get("/api/agents", requireAuth(), handleListAgents);
+app.post("/api/agents", requireAuth(), handleCreateAgent);
 
 app.get("/api/me", requireAuth(), async (c) => {
   const session = c.get("session");

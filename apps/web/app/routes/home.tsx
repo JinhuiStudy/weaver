@@ -1,10 +1,21 @@
 import { ArrowRight, Github, Sparkles } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLoaderData } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
 import { WvNode } from "~/components/canvas/WvNode";
 import { Badge } from "~/components/ui";
-import { type Session, useSession } from "~/lib/session";
+import type { Session } from "~/lib/session";
+import { callRuntime, loadSessionServer } from "~/lib/session.server";
 import type { Route } from "./+types/home";
+
+type AgentSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  visibility: string;
+  category: string | null;
+  updated_at: number;
+};
 
 export function meta(_: Route.MetaArgs) {
   return [
@@ -17,8 +28,25 @@ export function meta(_: Route.MetaArgs) {
   ];
 }
 
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const session = await loadSessionServer(request, env);
+  let agents: AgentSummary[] = [];
+  if (session) {
+    const res = await callRuntime(env, "/api/agents", request);
+    if (res.ok) {
+      try {
+        agents = ((await res.json()) as { agents: AgentSummary[] }).agents ?? [];
+      } catch {
+        agents = [];
+      }
+    }
+  }
+  return { session, agents };
+}
+
 export default function Home() {
-  const { session, loading } = useSession();
+  const { session, agents } = useLoaderData<typeof loader>();
   return (
     <main className="min-h-screen">
       <header className="flex items-center justify-between border-b border-border px-8 py-4">
@@ -42,7 +70,7 @@ export default function Home() {
           </a>
           {session ? (
             <UserBadge session={session} />
-          ) : loading ? null : (
+          ) : (
             <Link to="/login" className="btn btn-primary btn-sm" data-testid="home-login-link">
               로그인
             </Link>
@@ -115,6 +143,8 @@ export default function Home() {
         </div>
       </section>
 
+      {session ? <MyAgentsSection agents={agents} /> : null}
+
       <section className="canvas-bg border-y border-border px-8 py-16 md:px-16">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-8">
           <WvNode type="input" label="webhook" body="POST /refund" />
@@ -160,6 +190,67 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function MyAgentsSection({ agents }: { agents: AgentSummary[] }) {
+  return (
+    <section className="px-8 pt-8 pb-12 md:px-16" data-testid="my-agents-section">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-4 flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-text-tertiary">
+            내 Agents
+          </h2>
+          <Link
+            to="/builder/new"
+            className="text-xs text-weaver-indigo hover:underline"
+            data-testid="new-agent-link"
+          >
+            + 새 agent 만들기
+          </Link>
+        </div>
+        {agents.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {agents.map((a) => (
+              <Link
+                key={a.id}
+                to={`/builder/${a.id}`}
+                className="card card-b hover:border-weaver-indigo"
+                data-testid="agent-card"
+              >
+                <div className="flex items-baseline justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-tertiary">
+                    @{a.slug}
+                  </span>
+                  <Badge tone={a.visibility === "public" ? "ok" : "info"}>{a.visibility}</Badge>
+                </div>
+                <h3 className="mt-1.5 text-sm font-semibold tracking-tight">{a.name}</h3>
+                {a.description ? (
+                  <p className="mt-2 line-clamp-2 text-xs text-text-secondary">{a.description}</p>
+                ) : null}
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-b text-center">
+              <p className="text-sm text-text-secondary">
+                아직 저장한 agent 가 없어요. 빌더에서 만들고{" "}
+                <span className="font-mono text-weaver-indigo">Save to workspace</span> 를 누르면
+                여기에 나타납니다.
+              </p>
+              <Link
+                to="/builder/new"
+                className="btn btn-primary btn-sm mt-4 inline-flex items-center gap-1.5"
+              >
+                첫 agent 만들기
+                <ArrowRight className="lu" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

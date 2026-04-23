@@ -380,7 +380,9 @@ test("Save exports a parseGraph-valid JSON download", async ({ page }) => {
   await gotoBuilder(page, id);
 
   const downloadPromise = page.waitForEvent("download");
-  await page.locator("button", { hasText: "Save" }).click();
+  // Scope to the outlined "Save ⌘S" button — a sibling "Save to workspace"
+  // button also has "Save" in its text so we need the exact accessible name.
+  await page.getByRole("button", { name: /^Save\s*⌘S$/ }).click();
   const download = await downloadPromise;
 
   const path = await download.path();
