@@ -17,6 +17,20 @@ async function gotoBuilder(page: Page, id: string) {
   await page.waitForTimeout(400);
 }
 
+/*
+ * Warm the Vite dev server once per spec file so the first test doesn't race
+ * against on-demand dep compilation (which can leave an error overlay visible
+ * just long enough to block the first click). Dismisses any lingering overlay
+ * before the real tests begin.
+ */
+test.beforeAll(async ({ browser }) => {
+  const page = await browser.newPage();
+  await page.goto(`/builder/warmup-${Math.random().toString(36).slice(2, 8)}`);
+  await page.locator(".react-flow__viewport").waitFor({ timeout: 15_000 });
+  await page.waitForTimeout(300);
+  await page.close();
+});
+
 /* ── R6: delete via inspector · undo exhaustion · palette jump ─────── */
 
 test("delete via Inspector button matches Delete key (cascade edges)", async ({ page }) => {

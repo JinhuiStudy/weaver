@@ -1,7 +1,9 @@
 import { ArrowRight, Github, Sparkles } from "lucide-react";
 import { Link } from "react-router";
+import { WeaverMark } from "~/components/brand/WeaverMark";
 import { WvNode } from "~/components/canvas/WvNode";
 import { Badge } from "~/components/ui";
+import { type Session, useSession } from "~/lib/session";
 import type { Route } from "./+types/home";
 
 export function meta(_: Route.MetaArgs) {
@@ -16,6 +18,7 @@ export function meta(_: Route.MetaArgs) {
 }
 
 export default function Home() {
+  const { session, loading } = useSession();
   return (
     <main className="min-h-screen">
       <header className="flex items-center justify-between border-b border-border px-8 py-4">
@@ -37,6 +40,13 @@ export default function Home() {
             <Github className="lu" />
             GitHub
           </a>
+          {session ? (
+            <UserBadge session={session} />
+          ) : loading ? null : (
+            <Link to="/login" className="btn btn-primary btn-sm" data-testid="home-login-link">
+              로그인
+            </Link>
+          )}
           <Link
             to="/builder/demo"
             className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
@@ -153,6 +163,28 @@ export default function Home() {
   );
 }
 
+function UserBadge({ session }: { session: Session }) {
+  const handle = session.user.handle;
+  const avatar = session.user.avatar_url;
+  return (
+    <div className="flex items-center gap-2" data-testid="user-badge">
+      {avatar ? (
+        <img src={avatar} alt={handle} className="h-6 w-6 rounded-full border border-border" />
+      ) : (
+        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface-1 text-xs text-text-secondary">
+          {handle.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+      <span className="font-mono text-xs text-text-secondary">@{handle}</span>
+      <form method="POST" action="/auth/logout">
+        <button type="submit" className="btn btn-ghost btn-sm" data-testid="logout-button">
+          로그아웃
+        </button>
+      </form>
+    </div>
+  );
+}
+
 const FEATURES = [
   {
     tone: "ok" as const,
@@ -170,39 +202,3 @@ const FEATURES = [
     body: "새 버전을 real 요청 N%로 섀도 실행, 정량 비교 후 승격.",
   },
 ];
-
-function WeaverMark({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 56 56" role="img" aria-label="Weaver logo">
-      <title>Weaver</title>
-      <path
-        d="M8 20 C 20 20, 20 36, 32 36"
-        stroke="var(--weaver-indigo)"
-        strokeWidth={4}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M8 36 C 20 36, 20 20, 32 20"
-        stroke="var(--weaver-cyan)"
-        strokeWidth={4}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M32 20 C 44 20, 44 36, 48 36"
-        stroke="var(--node-agent)"
-        strokeWidth={4}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M32 36 C 44 36, 44 20, 48 20"
-        stroke="var(--node-tool)"
-        strokeWidth={4}
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  );
-}

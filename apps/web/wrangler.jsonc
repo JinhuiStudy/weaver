@@ -4,6 +4,14 @@
   "compatibility_date": "2025-04-04",
   "main": "./workers/app.ts",
   "vars": {
-    "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+    // Local dev default. For wrangler deploy we set this per-env below.
+    "RUNTIME_URL": "http://localhost:8787"
+  },
+  "env": {
+    "production": {
+      "vars": {
+        "RUNTIME_URL": "https://weaver-runtime.jinhuistudy.workers.dev"
+      }
+    }
   }
 }

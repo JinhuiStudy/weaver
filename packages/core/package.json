@@ -14,7 +14,6 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "ulid": "^2.3.0",
     "valibot": "^0.42.1"
   },
   "devDependencies": {
