@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
+import { requireRateLimit } from "./auth/rate-limit";
 import { mountAuthRoutes } from "./auth/routes";
 import { type AiBinding, composeWithAi } from "./compose/ai";
 import { applyComposeIntent, type CanvasSnapshot, parseComposeIntent } from "./compose/stub";
@@ -102,7 +103,11 @@ app.post("/api/compose", async (c) => {
  * synthetic id when `env.DB` is missing so the frontend remains wired in
  * dev without a Cloudflare account.
  */
-app.post("/api/runs", requireAuth(), async (c) => {
+// Sprint 0 D5: per-user daily cap enforced BEFORE the handler writes to D1
+// so a spammer can't blow past Workers AI's 10k neurons/day Free tier.
+const RUNS_DAILY_CAP = 10;
+
+app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), async (c) => {
   let body: {
     tool_id?: string;
     tool_version?: number;
