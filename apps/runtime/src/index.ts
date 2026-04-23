@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { requireAuth, sessionMiddleware } from "./auth/middleware";
 import { mountAuthRoutes } from "./auth/routes";
 import { type AiBinding, composeWithAi } from "./compose/ai";
 import { applyComposeIntent, type CanvasSnapshot, parseComposeIntent } from "./compose/stub";
@@ -30,10 +31,39 @@ function genId() {
 
 const app = new Hono<{ Bindings: Env }>();
 
+app.use("*", sessionMiddleware());
+
 app.get("/", (c) => c.text("weaver-runtime ok"));
 app.get("/health", (c) => c.json({ ok: true, version: "0.0.0" }));
 
 mountAuthRoutes(app);
+
+app.get("/api/me", requireAuth(), async (c) => {
+  const session = c.get("session");
+  const db = c.env.DB;
+  if (!db || !session) return c.json({ error: "db not available" }, 503);
+
+  const userRow = await db
+    .prepare("SELECT id, handle, name, email, avatar_url FROM users WHERE id = ?")
+    .bind(session.sub)
+    .first<{
+      id: string;
+      handle: string;
+      name: string | null;
+      email: string | null;
+      avatar_url: string | null;
+    }>();
+  const orgRow = await db
+    .prepare("SELECT id, slug, name FROM orgs WHERE id = ?")
+    .bind(session.org)
+    .first<{ id: string; slug: string; name: string }>();
+
+  if (!userRow || !orgRow) {
+    return c.json({ error: "session references a user or org that no longer exists" }, 404);
+  }
+
+  return c.json({ user: userRow, org: orgRow });
+});
 
 app.post("/api/compose", async (c) => {
   let body: { prompt?: string; canvas?: CanvasSnapshot };
@@ -72,12 +102,11 @@ app.post("/api/compose", async (c) => {
  * synthetic id when `env.DB` is missing so the frontend remains wired in
  * dev without a Cloudflare account.
  */
-app.post("/api/runs", async (c) => {
+app.post("/api/runs", requireAuth(), async (c) => {
   let body: {
     tool_id?: string;
     tool_version?: number;
     input?: unknown;
-    org_id?: string;
     graph?: unknown;
   };
   try {
@@ -88,6 +117,9 @@ app.post("/api/runs", async (c) => {
   const toolId = typeof body.tool_id === "string" ? body.tool_id : null;
   if (!toolId) return c.json({ error: "tool_id is required" }, 400);
 
+  const session = c.get("session");
+  if (!session) return c.json({ error: "authentication required" }, 401);
+
   const id = genId();
   const now = Date.now();
   const db = c.env.DB;
@@ -96,18 +128,19 @@ app.post("/api/runs", async (c) => {
       .prepare(
         `INSERT INTO agent_runs
           (id, tool_id, tool_version, org_id, status, input, state, graph_json,
-           created_at, updated_at, retry_count, cost_usd_micro)
-         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, 0, 0)`,
+           created_at, updated_at, retry_count, cost_usd_micro, created_by_user_id)
+         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, 0, 0, ?)`,
       )
       .bind(
         id,
         toolId,
         body.tool_version ?? 1,
-        body.org_id ?? "local",
+        session.org,
         JSON.stringify(body.input ?? {}),
         body.graph == null ? null : JSON.stringify(body.graph),
         now,
         now,
+        session.sub,
       )
       .run();
   }
