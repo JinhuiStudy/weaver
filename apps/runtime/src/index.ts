@@ -1,5 +1,12 @@
 import { Hono } from "hono";
-import { handleCreateAgent, handleListAgents } from "./api/agents";
+import {
+  handleCreateAgent,
+  handleCreateVersion,
+  handleForkAgent,
+  handleGetAgent,
+  handleGetPublicAgent,
+  handleListAgents,
+} from "./api/agents";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
 import { requireRateLimit } from "./auth/rate-limit";
 import { mountAuthRoutes } from "./auth/routes";
@@ -43,6 +50,12 @@ mountAuthRoutes(app);
 
 app.get("/api/agents", requireAuth(), handleListAgents);
 app.post("/api/agents", requireAuth(), handleCreateAgent);
+app.get("/api/agents/:id", requireAuth(), handleGetAgent);
+app.post("/api/agents/:id/versions", requireAuth(), handleCreateVersion);
+app.post("/api/agents/:id/fork", requireAuth(), handleForkAgent);
+
+// Unauthenticated — public profile page.
+app.get("/api/public/agents/:handle/:slug", handleGetPublicAgent);
 
 app.get("/api/me", requireAuth(), async (c) => {
   const session = c.get("session");

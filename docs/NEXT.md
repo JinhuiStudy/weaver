@@ -107,7 +107,7 @@ Weaver 가 Cloudflare/Axiom/Resend 등에 내는 **월 청구서 $0**.
 |---|---|---|---|
 | W1-4 | ✅ 코어 런타임 + 캔버스 + D1 + Cron + 배포 | - | Done |
 | W5 | ✅ Sprint 0 · 인증 + per-user rate limit | 5 commits | GitHub 로그인 · 익명 401 · 유저당 cap — 완료 `8078af8` |
-| W6 | Sprint 1 · Agent 공개 모델 · 슬러그 URL · Fork | 2 PR | `weaver-web.../@user/agent-slug` 작동 · Fork 버튼 |
+| W6 | ✅ Sprint 1 · Agent 공개 모델 · 슬러그 URL · Fork | 2 commits | `weaver-web.../@handle/slug` 작동 · Fork 버튼 · 2026-04-23 early-ship |
 | W7 | Sprint 2 · OTEL + 비용 추적 + Run viewer | 2 PR | Axiom trace · run 페이지에 waterfall |
 | W8 | Sprint 3 · Agent feed · 구독 · 검색 (Vectorize) | 2 PR | RSS-style feed · 검색 · tag |
 | W9 | Sprint 4 · Feedback 수집 + Genealogy tree | 2 PR | 👍/👎 · fork 트리 시각화 |
@@ -116,6 +116,21 @@ Weaver 가 Cloudflare/Axiom/Resend 등에 내는 **월 청구서 $0**.
 | W12 | Sprint 7 · Trending · Explore · Discover | 1 PR | 인기 / 신규 / 카테고리 페이지 |
 | W13 | Sprint 8 · Landing + Invite-only seed | 1 PR | 100 크리에이터 초대 · 100 seed agents |
 | W14 | Sprint 9 · 퍼블릭 런칭 | 1 PR | HN · PH · Reddit 게시 |
+
+---
+
+## Sprint 1 ✅ 완료 (2026-04-23, Sprint 0 와 같은 날 early-ship)
+
+- D1 migration `0004_agents.sql` · `agents` · `agent_versions` · `agent_runs.agent_version_id`
+- Runtime: `GET /api/agents` · `POST /api/agents` · `GET /api/agents/:id` (+ definition) · `POST /api/agents/:id/versions` (monotonic) · `POST /api/agents/:id/fork` (슬러그 `-2` · 프라이빗 403) · `GET /api/public/agents/:handle/:slug` (익명 허용 · visibility 필터)
+- Web: `/@handle/slug` SSR (`:prefixedHandle/:slug` catch-all + `@` 검사) · 그래프 카드 미리보기 · Fork 버튼 · 홈 "내 Agents" 그리드 · 빌더 loader 가 ULID 면 서버 hydrate · "Save to workspace" / "Push new version" 버튼 분기
+- 테스트: runtime integration 41→53 · web e2e 44→45 · PNG `13-public-agent-404.png` 눈 검증
+
+### 이월 (Sprint 2~ 이후)
+
+- Metadata 편집 UI — name/description/category/visibility 를 빌더 안에서 수정 (지금은 Save 시 이름만 입력, 이후 불변)
+- Genealogy tree 시각화 — Sprint 4 (feedback) 와 합쳐서
+- 공개 페이지 카드에 creator avatar · fork count · like ratio (Sprint 4 이후)
 
 ---
 

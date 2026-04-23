@@ -1,3 +1,4 @@
+import { ULID_RE } from "@weaver/core";
 import type { Edge } from "@xyflow/react";
 import {
   ArrowLeft,
@@ -12,7 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, redirect, useNavigate } from "react-router";
+import { Link, redirect, useLoaderData, useNavigate } from "react-router";
 import { CommandPalette } from "~/components/canvas/CommandPalette";
 import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
@@ -22,19 +23,55 @@ import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
 import { loadCanvasFromFile } from "~/lib/importGraph";
 import { createRun } from "~/lib/runs";
-import { loadSessionServer } from "~/lib/session.server";
+import { callRuntime, loadSessionServer } from "~/lib/session.server";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
+
+type SavedAgentDefinition = {
+  tool_id?: string;
+  nodes?: unknown[];
+  edges?: unknown[];
+};
+
+type SavedAgent = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  visibility: string;
+  category: string | null;
+  current_version_id: string | null;
+  fork_of_agent_id: string | null;
+  created_at: number;
+  updated_at: number;
+  definition: SavedAgentDefinition | null;
+};
 
 export function meta({ params }: Route.MetaArgs) {
   return [{ title: `Weaver · ${params.id} · builder` }];
 }
 
-export async function loader({ request, context }: Route.LoaderArgs) {
-  const session = await loadSessionServer(request, context.cloudflare.env);
+export async function loader({ request, context, params }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const session = await loadSessionServer(request, env);
   if (!session) throw redirect("/login");
-  return { session };
+
+  // If the URL segment looks like a ULID, try to hydrate from the runtime's
+  // saved agent record. Free-form ids (e.g. "demo", "new") and 404s drop
+  // through to the demo seed — the builder still works as a sandbox.
+  let savedAgent: SavedAgent | null = null;
+  if (ULID_RE.test(params.id)) {
+    const res = await callRuntime(env, `/api/agents/${params.id}`, request);
+    if (res.ok) {
+      try {
+        savedAgent = (await res.json()) as SavedAgent;
+      } catch {
+        savedAgent = null;
+      }
+    }
+  }
+  return { session, savedAgent };
 }
 
 const demoNodes: CanvasNode[] = [
@@ -123,10 +160,22 @@ const demoEdges: Edge[] = [
 ];
 
 export default function BuilderRoute({ params }: Route.ComponentProps) {
+  const { savedAgent } = useLoaderData<typeof loader>();
+
+  // Hydrate from the server's saved definition when present — fall back to
+  // the demo seed so a fresh tool id (e.g. `/builder/demo`) still has nodes.
+  // The canvas hook also falls back to its IndexedDB snapshot, which wins
+  // over both to preserve unsaved local edits across reloads.
+  // JSON round-tripped nodes lose their richer `CanvasNode.data.body` React
+  // typing — cast back to the canvas type now that we know the shape.
+  const seedNodes: CanvasNode[] =
+    (savedAgent?.definition?.nodes as CanvasNode[] | undefined) ?? demoNodes;
+  const seedEdges: Edge[] = (savedAgent?.definition?.edges as Edge[] | undefined) ?? demoEdges;
+
   const status = useCanvasPersistence({
     toolId: params.id,
-    seedNodes: demoNodes,
-    seedEdges: demoEdges,
+    seedNodes,
+    seedEdges,
   });
 
   // Zustand selectors — re-render only when these specific slices change.
@@ -160,30 +209,43 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
 
   const [publishing, setPublishing] = useState(false);
   const onPublish = useCallback(async () => {
-    const name = window.prompt(
-      "Agent 이름을 입력하세요 (예: HN Summary). 슬러그는 자동으로 생성됩니다.",
-    );
-    if (!name) return;
     const state = useCanvas.getState();
     const definition = {
       tool_id: params.id,
       nodes: state.nodes,
       edges: state.edges,
     };
+
     setPublishing(true);
     try {
-      const res = await fetch("/api/agents", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, definition }),
-      });
+      let res: Response;
+      if (savedAgent) {
+        // Existing agent — push a new version, don't rename.
+        res = await fetch(`/api/agents/${savedAgent.id}/versions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ definition }),
+        });
+      } else {
+        // New agent — prompt for a name, create + first version.
+        const name = window.prompt(
+          "Agent 이름을 입력하세요 (예: HN Summary). 슬러그는 자동으로 생성됩니다.",
+        );
+        if (!name) return;
+        res = await fetch("/api/agents", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ name, definition }),
+        });
+      }
+
       if (res.status === 401) {
         navigate("/login");
         return;
       }
       if (!res.ok) {
         const msg = await res.text();
-        throw new Error(`POST /api/agents failed (${res.status}): ${msg}`);
+        throw new Error(`save failed (${res.status}): ${msg}`);
       }
       navigate("/");
     } catch (err) {
@@ -192,7 +254,7 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     } finally {
       setPublishing(false);
     }
-  }, [params.id, navigate]);
+  }, [savedAgent, params.id, navigate]);
 
   // Hidden file input triggered by the Import button; separated so we can
   // reuse the hydrate logic from elsewhere (e.g. ⌘K palette).
@@ -356,7 +418,7 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             disabled={publishing}
             data-testid="save-to-workspace"
           >
-            Save to workspace
+            {savedAgent ? "Push new version" : "Save to workspace"}
           </Button>
           <Button
             variant="primary"
