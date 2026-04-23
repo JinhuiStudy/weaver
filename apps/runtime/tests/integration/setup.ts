@@ -2,7 +2,13 @@ import { env } from "cloudflare:test";
 import { beforeAll } from "vitest";
 // Vite's `?raw` suffix inlines the file as a string at build time — Worker
 // runtimes don't ship a node:fs implementation, so we can't readFileSync().
-import schemaSql from "../../migrations/0001_agent_runs.sql?raw";
+import migration0001 from "../../migrations/0001_agent_runs.sql?raw";
+// NOTE: 0002 (ADD COLUMN graph_json) is intentionally skipped — the 0001 file
+// already declares `graph_json`, so replaying 0002 on a fresh DB errors with
+// "duplicate column name". Production D1 still has both applied in order, so
+// we don't delete 0002 from the migrations/ dir. Tracked in docs/NEXT.md
+// tech-debt: "D1 migration CLI 체계화".
+import migration0003 from "../../migrations/0003_auth.sql?raw";
 
 /**
  * Apply the 0001 migration once per test run. Miniflare's `d1Persist: false`
@@ -40,7 +46,9 @@ function stripInlineComment(line: string): string {
 }
 
 beforeAll(async () => {
-  for (const stmt of splitSqlStatements(schemaSql)) {
-    await env.DB.prepare(stmt).run();
+  for (const migration of [migration0001, migration0003]) {
+    for (const stmt of splitSqlStatements(migration)) {
+      await env.DB.prepare(stmt).run();
+    }
   }
 });

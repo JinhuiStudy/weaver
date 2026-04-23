@@ -51,9 +51,7 @@ describe("Cron scheduled() · D1 integration", () => {
 
     // Tick 1: pending → running(in).
     await SELF.scheduled({ scheduledTime: Date.now(), cron: "* * * * *" });
-    let row = await env.DB.prepare(
-      "SELECT status, current_node_id FROM agent_runs WHERE id = ?",
-    )
+    let row = await env.DB.prepare("SELECT status, current_node_id FROM agent_runs WHERE id = ?")
       .bind("r-live-1")
       .first<{ status: string; current_node_id: string | null }>();
     expect(row?.status).toBe("running");
@@ -61,9 +59,7 @@ describe("Cron scheduled() · D1 integration", () => {
 
     // Tick 2: running(in) → running(out) via the only outgoing edge.
     await SELF.scheduled({ scheduledTime: Date.now(), cron: "* * * * *" });
-    row = await env.DB.prepare(
-      "SELECT status, current_node_id FROM agent_runs WHERE id = ?",
-    )
+    row = await env.DB.prepare("SELECT status, current_node_id FROM agent_runs WHERE id = ?")
       .bind("r-live-1")
       .first<{ status: string; current_node_id: string | null }>();
     expect(row?.current_node_id).toBe("out");

@@ -202,9 +202,7 @@ function rowToRun(row: AgentRunRow): AgentRun {
   };
 }
 
-function parseGraphOrFailed(
-  graphJson: string | "",
-): { nodes: StepNode[]; edges: StepEdge[] } {
+function parseGraphOrFailed(graphJson: string | ""): { nodes: StepNode[]; edges: StepEdge[] } {
   if (!graphJson) return { nodes: [], edges: [] };
   try {
     const g = JSON.parse(graphJson);
@@ -227,11 +225,7 @@ function safeJson(raw: string): unknown {
 
 export default {
   fetch: app.fetch,
-  async scheduled(
-    _event: ScheduledController,
-    env: Env,
-    _ctx: ExecutionContext,
-  ): Promise<void> {
+  async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
     if (!env.DB) return;
     await tickOnce(env.DB, Date.now());
   },

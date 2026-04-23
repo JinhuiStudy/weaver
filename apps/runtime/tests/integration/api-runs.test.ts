@@ -20,15 +20,13 @@ describe("POST /api/runs · D1 integration", () => {
     expect(body.tool_id).toBe("demo");
     expect(body.id).toMatch(/^[0-9a-f-]{36}$/); // crypto.randomUUID()
 
-    const row = await env.DB.prepare("SELECT * FROM agent_runs WHERE id = ?")
-      .bind(body.id)
-      .first<{
-        id: string;
-        tool_id: string;
-        status: string;
-        input: string;
-        state: string;
-      }>();
+    const row = await env.DB.prepare("SELECT * FROM agent_runs WHERE id = ?").bind(body.id).first<{
+      id: string;
+      tool_id: string;
+      status: string;
+      input: string;
+      state: string;
+    }>();
     expect(row).not.toBeNull();
     expect(row?.tool_id).toBe("demo");
     expect(row?.status).toBe("pending");
