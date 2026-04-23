@@ -20,6 +20,13 @@ export default defineWorkersConfig({
           compatibilityFlags: ["nodejs_compat"],
           d1Databases: { DB: "weaver-db" },
           d1Persist: false,
+          bindings: {
+            GITHUB_OAUTH_CLIENT_ID: "test-client-id",
+            GITHUB_OAUTH_CLIENT_SECRET: "test-client-secret",
+            WEAVER_SESSION_SECRET:
+              "test-session-secret-at-least-64-bytes-long-abcdefghijklmnopqrstuvwxyz",
+            FRONTEND_URL: "http://web.test/",
+          },
         },
       },
     },

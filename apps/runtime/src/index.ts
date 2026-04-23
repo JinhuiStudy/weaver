@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { mountAuthRoutes } from "./auth/routes";
 import { type AiBinding, composeWithAi } from "./compose/ai";
 import { applyComposeIntent, type CanvasSnapshot, parseComposeIntent } from "./compose/stub";
 import { processPendingRuns } from "./cron";
@@ -6,14 +7,21 @@ import type { AgentRun, StepEdge, StepNode } from "./executor/step";
 
 /**
  * Cloudflare Worker entry. Minimal Hono app.
- *   • /api/compose   — NL → graph diff (Workers AI or offline stub fallback).
- *   • /api/runs      — create a run (D1 binding optional in dev).
- *   • scheduled()    — Cron handler; every minute, advance pending runs
- *                      one step via `processPendingRuns`.
+ *   • /api/compose             — NL → graph diff (Workers AI or offline stub fallback).
+ *   • /api/runs                — create a run (D1 binding optional in dev).
+ *   • /auth/github             — GitHub OAuth login redirect.
+ *   • /auth/github/callback    — OAuth code exchange + session mint.
+ *   • /auth/logout             — clear session cookie.
+ *   • scheduled()              — Cron; every minute, advance pending runs
+ *                                one step via `processPendingRuns`.
  */
 type Env = {
   AI?: AiBinding;
   DB?: D1Database;
+  GITHUB_OAUTH_CLIENT_ID?: string;
+  GITHUB_OAUTH_CLIENT_SECRET?: string;
+  WEAVER_SESSION_SECRET?: string;
+  FRONTEND_URL?: string;
 };
 
 function genId() {
@@ -24,6 +32,8 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.get("/", (c) => c.text("weaver-runtime ok"));
 app.get("/health", (c) => c.json({ ok: true, version: "0.0.0" }));
+
+mountAuthRoutes(app);
 
 app.post("/api/compose", async (c) => {
   let body: { prompt?: string; canvas?: CanvasSnapshot };
