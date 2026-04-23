@@ -54,6 +54,13 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (isProxyPath(url.pathname)) {
+      // Production: a worker → worker service binding bypasses the public
+      // internet and sidesteps Cloudflare's loopback-fetch block that
+      // returns 403 when weaver-web tries to fetch weaver-runtime by URL.
+      if (env.RUNTIME) {
+        return env.RUNTIME.fetch(request);
+      }
+      // Dev fallback: plain HTTP to a separately-running runtime worker.
       const runtimeUrl = env.RUNTIME_URL;
       if (!runtimeUrl) {
         return new Response("RUNTIME_URL not configured", { status: 503 });

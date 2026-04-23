@@ -26,6 +26,7 @@ export default defineWorkersConfig({
             WEAVER_SESSION_SECRET:
               "test-session-secret-at-least-64-bytes-long-abcdefghijklmnopqrstuvwxyz",
             FRONTEND_URL: "http://web.test/",
+            AUTH_CALLBACK_URL: "http://runtime.test/auth/github/callback",
           },
         },
       },

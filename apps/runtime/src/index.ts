@@ -24,6 +24,7 @@ type Env = {
   GITHUB_OAUTH_CLIENT_SECRET?: string;
   WEAVER_SESSION_SECRET?: string;
   FRONTEND_URL?: string;
+  AUTH_CALLBACK_URL?: string;
 };
 
 function genId() {

@@ -10,6 +10,11 @@ export type AuthEnv = {
   GITHUB_OAUTH_CLIENT_SECRET?: string;
   WEAVER_SESSION_SECRET?: string;
   FRONTEND_URL?: string;
+  // The URL GitHub will redirect to after authorize. Set explicitly per env
+  // because the runtime sits behind the web worker's /auth proxy — using
+  // `c.req.url` here would produce a runtime-host callback that never gets
+  // back through the proxy for cookie-on-web-origin delivery.
+  AUTH_CALLBACK_URL?: string;
 };
 
 /**
@@ -35,8 +40,8 @@ function isSecure(requestUrl: string): boolean {
   return new URL(requestUrl).protocol === "https:";
 }
 
-function callbackUrl(requestUrl: string): string {
-  return new URL("/auth/github/callback", requestUrl).toString();
+function callbackUrl(env: AuthEnv, requestUrl: string): string {
+  return env.AUTH_CALLBACK_URL ?? new URL("/auth/github/callback", requestUrl).toString();
 }
 
 function frontendRedirect(env: AuthEnv, requestUrl: string): string {
@@ -61,7 +66,7 @@ export function mountAuthRoutes(app: Hono<{ Bindings: AuthEnv }>): void {
       buildAuthorizeUrl({
         clientId,
         state,
-        redirectUri: callbackUrl(c.req.url),
+        redirectUri: callbackUrl(c.env, c.req.url),
       }),
       302,
     );
@@ -90,7 +95,7 @@ export function mountAuthRoutes(app: Hono<{ Bindings: AuthEnv }>): void {
         code,
         clientId,
         clientSecret,
-        redirectUri: callbackUrl(c.req.url),
+        redirectUri: callbackUrl(c.env, c.req.url),
         fetchImpl: githubFetchImpl,
       });
       accessToken = result.accessToken;

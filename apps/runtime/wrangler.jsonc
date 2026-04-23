@@ -16,5 +16,9 @@
   ],
   "triggers": {
     "crons": ["* * * * *"]
+  },
+  "vars": {
+    "FRONTEND_URL": "https://weaver-web.jinhuistudy.workers.dev",
+    "AUTH_CALLBACK_URL": "https://weaver-web.jinhuistudy.workers.dev/auth/github/callback"
   }
 }

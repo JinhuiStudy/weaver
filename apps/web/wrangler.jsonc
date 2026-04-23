@@ -4,14 +4,7 @@
   "compatibility_date": "2025-04-04",
   "main": "./workers/app.ts",
   "vars": {
-    // Local dev default. For wrangler deploy we set this per-env below.
-    "RUNTIME_URL": "http://localhost:8787"
+    "RUNTIME_URL": "https://weaver-runtime.jinhuistudy.workers.dev"
   },
-  "env": {
-    "production": {
-      "vars": {
-        "RUNTIME_URL": "https://weaver-runtime.jinhuistudy.workers.dev"
-      }
-    }
-  }
+  "services": [{ "binding": "RUNTIME", "service": "weaver-runtime" }]
 }
