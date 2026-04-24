@@ -12,7 +12,7 @@
 
 ## 🎯 현재 상태 (2026-04-24)
 
-**Sprint 0-8 완료** · 457 tests green · 9 커밋 main push 대기.
+**Sprint 0-9 코드 완료** · 467 tests green · 11 커밋 main push 대기. 남은 건 런칭 당일 이벤트.
 
 | Sprint | 주제 | 상태 |
 |---|---|---|
@@ -27,9 +27,16 @@
 | Sprint 6 | Shadow eval · Accept/Reject · diff viewer · run→version auto-wire | ✅ |
 | Sprint 7 | Trending · New · /explore · 카테고리 chip | ✅ |
 | Sprint 8 | Waitlist · /waitlist 페이지 · 홈 invite CTA | ✅ |
-| Sprint 9 | 🚀 런칭 (rate limit + 모더레이션 + 데모 영상 + HN/PH) | 📅 남음 |
+| Sprint 9 (코드) | Moderation (auto-hide + 🚩 report) · /docs · 런칭 포스트 초안 | ✅ |
+| Sprint 9 (이벤트) | HN Show HN · ProductHunt · Reddit · 3분 데모 영상 · 회고 | 📅 당일 |
 
-**전체 라이브 기능**: /, /login, /builder/:id, /@handle/slug, /@h/s/genealogy, /tools/:id/runs/:id, /me/feed, /search, /explore, /help, /design, /agents/:id/evolutions, /admin/evolutions, /waitlist
+**전체 라이브 페이지 (14)**: /, /login, /builder/:id, /@handle/slug, /@h/s/genealogy, /tools/:id/runs/:id, /me/feed, /search, /explore, /help, /docs, /design, /agents/:id/evolutions, /admin/evolutions, /waitlist
+
+**런칭 당일 체크리스트** (docs/launch/):
+- `hn-show-hn.md` — 본문 + 제목 3안 준비됨 (Loom 링크 교체만)
+- `producthunt.md` — 태그라인 + 260자 + 갤러리 5장 체크
+- `reddit.md` — r/SideProject · r/LocalLLaMA · r/webdev 3개
+- `demo-script.md` — 3분 4-scene 영상 촬영 스크립트
 
 ---
 
