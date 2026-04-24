@@ -1,12 +1,35 @@
 # NEXT — 실행 계획 (Evolving Agent Network · 유저 $0 · 운영 $0)
 
-> **버전**: 2026-04-23 (v3 · Sprint 0 완료 반영)
+> **버전**: 2026-04-24 (v4 · Sprint 0-8 완료 반영 · Sprint 9 런칭 남음)
 > **제품 한 줄**: Fork agents. Rate them. They evolve. Free forever.
 > **타겟**: 개인 개발자 · 메이커 · 학생 · 크리에이터 (기업 아님)
 > **예산**: 운영 $0 · 유저 $0 · 개인 개발도구는 예외 (ADR-006 §6)
 > **런칭 목표**: Week 14 = 2026-W30
 
 이 문서가 **유일한 실행 계획**. Sprint 중 다른 md (ROADMAP, WEEK-1-PLAN, VISION) 는 히스토리/참조용.
+
+---
+
+## 🎯 현재 상태 (2026-04-24)
+
+**Sprint 0-8 완료** · 457 tests green · 9 커밋 main push 대기.
+
+| Sprint | 주제 | 상태 |
+|---|---|---|
+| W1-4 | 코어 런타임 · 캔버스 · D1 · Cron · 배포 | ✅ |
+| Sprint 0 | 인증 + per-user rate limit | ✅ |
+| Sprint 1 | Public agent · /@handle/slug · Fork · metadata 편집 | ✅ |
+| Sprint 2 | OTEL + Axiom + cost + Run Viewer | ✅ |
+| /help · 홈 리뉴얼 | 12-section 도움말 + Fork/Rate/Evolve 홈 hero | ✅ |
+| Sprint 3 | agent_outputs · JSON Feed · Subscribe · /@me/feed · Search | ✅ |
+| Sprint 4 | Feedback (👍/👎) · like ratio · Genealogy tree | ✅ |
+| Sprint 5 | Fitness · 5 mutation · evolution engine · /admin/evolutions | ✅ |
+| Sprint 6 | Shadow eval · Accept/Reject · diff viewer · run→version auto-wire | ✅ |
+| Sprint 7 | Trending · New · /explore · 카테고리 chip | ✅ |
+| Sprint 8 | Waitlist · /waitlist 페이지 · 홈 invite CTA | ✅ |
+| Sprint 9 | 🚀 런칭 (rate limit + 모더레이션 + 데모 영상 + HN/PH) | 📅 남음 |
+
+**전체 라이브 기능**: /, /login, /builder/:id, /@handle/slug, /@h/s/genealogy, /tools/:id/runs/:id, /me/feed, /search, /explore, /help, /design, /agents/:id/evolutions, /admin/evolutions, /waitlist
 
 ---
 
