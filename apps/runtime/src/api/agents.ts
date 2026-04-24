@@ -906,6 +906,197 @@ export async function handleSearchAgents(c: Context): Promise<Response> {
   return c.json({ q, category: category || null, agents: rows.results ?? [] });
 }
 
+/**
+ * POST /api/evolutions/:id/accept — the creator promotes a candidate to v2.
+ *
+ * Creates a new `agent_versions` row with the candidate's definition, swaps
+ * `agents.current_version_id`, and stamps the evolution row's `accepted_at`
+ * + `accepted_version_id`. Refuses on already-accepted rows (409) so the
+ * endpoint is safe to retry.
+ */
+export async function handleAcceptEvolution(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+
+  const evo = await db
+    .prepare(
+      `SELECT e.id, e.agent_version_id, e.strategy, e.candidate_definition_json,
+              e.accepted_at, e.rejected_at,
+              av.agent_id AS agent_id, a.creator_user_id AS creator_user_id
+         FROM agent_evolutions e
+         JOIN agent_versions av ON av.id = e.agent_version_id
+         JOIN agents a ON a.id = av.agent_id
+        WHERE e.id = ?`,
+    )
+    .bind(id)
+    .first<{
+      id: string;
+      agent_version_id: string;
+      strategy: string;
+      candidate_definition_json: string;
+      accepted_at: number | null;
+      rejected_at: number | null;
+      agent_id: string;
+      creator_user_id: string;
+    }>();
+  if (!evo) return c.json({ error: "not found" }, 404);
+  if (evo.creator_user_id !== session.sub) {
+    return c.json({ error: "only the creator can accept an evolution" }, 403);
+  }
+  if (evo.accepted_at) return c.json({ error: "already accepted" }, 409);
+  if (evo.rejected_at) return c.json({ error: "already rejected" }, 409);
+
+  const maxRow = await db
+    .prepare("SELECT MAX(version) AS m FROM agent_versions WHERE agent_id = ?")
+    .bind(evo.agent_id)
+    .first<{ m: number | null }>();
+  const nextVersion = (maxRow?.m ?? 0) + 1;
+
+  const now = Date.now();
+  const newVersionId = newId();
+  const definitionJson = evo.candidate_definition_json;
+  const promptHash = await sha256Hex(definitionJson);
+
+  await db.batch([
+    db
+      .prepare(
+        `INSERT INTO agent_versions
+           (id, agent_id, version, definition_json, prompt_hash, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(newVersionId, evo.agent_id, nextVersion, definitionJson, promptHash, now),
+    db
+      .prepare("UPDATE agents SET current_version_id = ?, updated_at = ? WHERE id = ?")
+      .bind(newVersionId, now, evo.agent_id),
+    db
+      .prepare("UPDATE agent_evolutions SET accepted_at = ?, accepted_version_id = ? WHERE id = ?")
+      .bind(now, newVersionId, evo.id),
+  ]);
+
+  return c.json({
+    evolution_id: evo.id,
+    agent_id: evo.agent_id,
+    new_version_id: newVersionId,
+    new_version: nextVersion,
+    strategy: evo.strategy,
+    accepted_at: now,
+  });
+}
+
+/** POST /api/evolutions/:id/reject — creator dismisses a candidate. */
+export async function handleRejectEvolution(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+
+  const evo = await db
+    .prepare(
+      `SELECT e.id, e.accepted_at, e.rejected_at,
+              a.creator_user_id AS creator_user_id
+         FROM agent_evolutions e
+         JOIN agent_versions av ON av.id = e.agent_version_id
+         JOIN agents a ON a.id = av.agent_id
+        WHERE e.id = ?`,
+    )
+    .bind(id)
+    .first<{
+      id: string;
+      accepted_at: number | null;
+      rejected_at: number | null;
+      creator_user_id: string;
+    }>();
+  if (!evo) return c.json({ error: "not found" }, 404);
+  if (evo.creator_user_id !== session.sub) {
+    return c.json({ error: "only the creator can reject an evolution" }, 403);
+  }
+  if (evo.accepted_at) return c.json({ error: "already accepted" }, 409);
+  if (evo.rejected_at) return c.json({ error: "already rejected" }, 409);
+
+  await db
+    .prepare("UPDATE agent_evolutions SET rejected_at = ? WHERE id = ?")
+    .bind(Date.now(), id)
+    .run();
+  return c.json({ evolution_id: id, rejected_at: Date.now() });
+}
+
+/** GET /api/agents/:id/evolutions — creator lists candidates for their agent. */
+export async function handleListAgentEvolutions(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+
+  const agent = await db
+    .prepare("SELECT id, current_version_id FROM agents WHERE id = ? AND creator_user_id = ?")
+    .bind(id, session.sub)
+    .first<{ id: string; current_version_id: string }>();
+  if (!agent) return c.json({ error: "not found" }, 404);
+
+  const rows = await db
+    .prepare(
+      `SELECT id, agent_version_id, strategy, shadow_case_count, shadow_wins,
+              shadow_losses, win_rate, suggested_at, accepted_at, rejected_at,
+              created_at, candidate_definition_json
+         FROM agent_evolutions
+        WHERE agent_version_id IN (
+                SELECT id FROM agent_versions WHERE agent_id = ?
+              )
+        ORDER BY created_at DESC`,
+    )
+    .bind(agent.id)
+    .all<{
+      id: string;
+      agent_version_id: string;
+      strategy: string;
+      shadow_case_count: number;
+      shadow_wins: number;
+      shadow_losses: number;
+      win_rate: number | null;
+      suggested_at: number | null;
+      accepted_at: number | null;
+      rejected_at: number | null;
+      created_at: number;
+      candidate_definition_json: string;
+    }>();
+
+  const evolutions = (rows.results ?? []).map((row) => ({
+    id: row.id,
+    agent_version_id: row.agent_version_id,
+    strategy: row.strategy,
+    shadow_case_count: row.shadow_case_count,
+    shadow_wins: row.shadow_wins,
+    shadow_losses: row.shadow_losses,
+    win_rate: row.win_rate,
+    suggested_at: row.suggested_at,
+    accepted_at: row.accepted_at,
+    rejected_at: row.rejected_at,
+    created_at: row.created_at,
+    candidate_prompt: extractAgentPrompt(row.candidate_definition_json),
+  }));
+  return c.json({ agent_id: agent.id, evolutions });
+}
+
+function extractAgentPrompt(defJson: string): string | null {
+  try {
+    const def = JSON.parse(defJson) as {
+      nodes?: Array<{ type?: string; data?: { system_prompt?: string } }>;
+    };
+    const agentNode = (def.nodes ?? []).find((n) => n?.type === "agent");
+    return agentNode?.data?.system_prompt ?? null;
+  } catch {
+    return null;
+  }
+}
+
 type EvolutionRow = {
   id: string;
   agent_version_id: string;

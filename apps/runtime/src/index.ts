@@ -7,18 +7,21 @@ import {
 } from "@weaver/observability";
 import { Hono } from "hono";
 import {
+  handleAcceptEvolution,
   handleCreateAgent,
   handleCreateVersion,
   handleForkAgent,
   handleGetAgent,
   handleGetPublicAgent,
   handleIsSubscribed,
+  handleListAgentEvolutions,
   handleListAgents,
   handleListEvolutions,
   handleMyFeed,
   handlePublicFeed,
   handlePublicGenealogy,
   handlePublicStats,
+  handleRejectEvolution,
   handleSearchAgents,
   handleSubmitFeedback,
   handleToggleSubscribe,
@@ -81,6 +84,11 @@ app.post("/api/agents/:id/versions", requireAuth(), handleCreateVersion);
 app.post("/api/agents/:id/fork", requireAuth(), handleForkAgent);
 app.post("/api/agents/:id/subscribe", requireAuth(), handleToggleSubscribe);
 app.get("/api/agents/:id/subscribe", requireAuth(), handleIsSubscribed);
+app.get("/api/agents/:id/evolutions", requireAuth(), handleListAgentEvolutions);
+
+// Sprint 6: Accept / Reject flow for mutation candidates.
+app.post("/api/evolutions/:id/accept", requireAuth(), handleAcceptEvolution);
+app.post("/api/evolutions/:id/reject", requireAuth(), handleRejectEvolution);
 
 // Unauthenticated — public profile page.
 // Search comes BEFORE :handle/:slug so "/search" isn't mis-parsed as a handle.
@@ -243,13 +251,24 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
   const traceId = newTraceId(); // Sprint 2: every run carries an OTEL trace.
   const now = Date.now();
   const db = c.env.DB;
+  let agentVersionId: string | null = null;
   if (db) {
+    // Sprint 6 D4: if tool_id is a saved agent, pin the run to its current
+    // version. agent_outputs materialisation (Sprint 3) needs this to know
+    // which prompt version emitted the output.
+    const agentRow = await db
+      .prepare("SELECT current_version_id FROM agents WHERE id = ?")
+      .bind(toolId)
+      .first<{ current_version_id: string | null }>();
+    agentVersionId = agentRow?.current_version_id ?? null;
+
     await db
       .prepare(
         `INSERT INTO agent_runs
           (id, tool_id, tool_version, org_id, status, input, state, graph_json,
-           trace_id, created_at, updated_at, retry_count, cost_usd_micro, created_by_user_id)
-         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, ?, 0, 0, ?)`,
+           trace_id, agent_version_id, created_at, updated_at,
+           retry_count, cost_usd_micro, created_by_user_id)
+         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, ?, ?, 0, 0, ?)`,
       )
       .bind(
         id,
@@ -259,13 +278,20 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
         JSON.stringify(body.input ?? {}),
         body.graph == null ? null : JSON.stringify(body.graph),
         traceId,
+        agentVersionId,
         now,
         now,
         session.sub,
       )
       .run();
   }
-  return c.json({ id, status: "pending", tool_id: toolId, trace_id: traceId });
+  return c.json({
+    id,
+    status: "pending",
+    tool_id: toolId,
+    trace_id: traceId,
+    agent_version_id: agentVersionId,
+  });
 });
 
 // Sprint 2 D5: Run viewer backing data.
