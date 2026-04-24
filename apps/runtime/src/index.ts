@@ -18,6 +18,7 @@ import {
   handleListAgents,
   handleListEvolutions,
   handleMyFeed,
+  handleNewestAgents,
   handlePublicFeed,
   handlePublicGenealogy,
   handlePublicStats,
@@ -25,6 +26,7 @@ import {
   handleSearchAgents,
   handleSubmitFeedback,
   handleToggleSubscribe,
+  handleTrendingAgents,
   handleUpdateAgent,
 } from "./api/agents";
 import { handleGetRun, handleListMyRuns } from "./api/runs";
@@ -91,8 +93,11 @@ app.post("/api/evolutions/:id/accept", requireAuth(), handleAcceptEvolution);
 app.post("/api/evolutions/:id/reject", requireAuth(), handleRejectEvolution);
 
 // Unauthenticated — public profile page.
-// Search comes BEFORE :handle/:slug so "/search" isn't mis-parsed as a handle.
+// Search / trending / new come BEFORE :handle/:slug so they aren't
+// mis-parsed as a handle.
 app.get("/api/public/agents/search", handleSearchAgents);
+app.get("/api/public/agents/trending", handleTrendingAgents);
+app.get("/api/public/agents/new", handleNewestAgents);
 app.get("/api/public/agents/:handle/:slug", handleGetPublicAgent);
 app.get("/api/public/agents/:handle/:slug/feed.json", handlePublicFeed);
 app.get("/api/public/agents/:handle/:slug/stats", handlePublicStats);

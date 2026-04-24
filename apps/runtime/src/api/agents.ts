@@ -851,6 +851,111 @@ export async function handleMyFeed(c: Context): Promise<Response> {
   return c.json({ items });
 }
 
+const WINDOW_MS: Record<string, number> = {
+  "24h": 24 * 3_600_000,
+  "7d": 7 * 24 * 3_600_000,
+  "30d": 30 * 24 * 3_600_000,
+};
+
+/**
+ * GET /api/public/agents/trending?window=24h|7d|30d&category=... — D1
+ * aggregate-based ranking. For each public/unlisted agent we count
+ * completed runs in the window + like/fork/subscriber weight, then sort.
+ * Unauthenticated on purpose (discovery surface).
+ */
+export async function handleTrendingAgents(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const url = new URL(c.req.url);
+  const window = url.searchParams.get("window") ?? "24h";
+  const category = (url.searchParams.get("category") ?? "").trim();
+  const windowMs = WINDOW_MS[window];
+  if (!windowMs) return c.json({ error: "window must be 24h|7d|30d" }, 400);
+
+  const cutoff = Date.now() - windowMs;
+  const binds: Array<string | number> = [cutoff];
+  let sql = `
+    SELECT a.id, a.slug, a.name, a.description, a.category, a.updated_at,
+           u.handle AS handle, u.avatar_url AS avatar_url,
+           COALESCE(r.n, 0) AS run_count,
+           COALESCE(l.n, 0) AS like_count,
+           COALESCE(s.n, 0) AS sub_count,
+           COALESCE(f.n, 0) AS fork_count
+      FROM agents a
+      JOIN users u ON u.id = a.creator_user_id
+      LEFT JOIN (SELECT tool_id, COUNT(*) AS n FROM agent_runs
+                  WHERE status = 'complete' AND completed_at >= ?
+                  GROUP BY tool_id) r ON r.tool_id = a.id
+      LEFT JOIN (SELECT agent_id, COUNT(*) AS n FROM agent_feedback WHERE rating = 1 GROUP BY agent_id)    l ON l.agent_id = a.id
+      LEFT JOIN (SELECT agent_id, COUNT(*) AS n FROM subscriptions GROUP BY agent_id)                     s ON s.agent_id = a.id
+      LEFT JOIN (SELECT fork_of_agent_id AS agent_id, COUNT(*) AS n FROM agents
+                  WHERE fork_of_agent_id IS NOT NULL GROUP BY fork_of_agent_id)                           f ON f.agent_id = a.id
+     WHERE a.visibility IN ('public', 'unlisted')
+       AND COALESCE(r.n, 0) > 0
+  `;
+  if (category) {
+    sql += " AND a.category = ?";
+    binds.push(category);
+  }
+  // Score: run_count × 1 + likes × 0.5 + subs × 1 + forks × 2.
+  sql +=
+    " ORDER BY (run_count + like_count * 0.5 + sub_count + fork_count * 2) DESC, a.updated_at DESC LIMIT 30";
+
+  const rows = await db
+    .prepare(sql)
+    .bind(...binds)
+    .all<{
+      id: string;
+      slug: string;
+      name: string;
+      description: string | null;
+      category: string | null;
+      updated_at: number;
+      handle: string;
+      avatar_url: string | null;
+      run_count: number;
+      like_count: number;
+      sub_count: number;
+      fork_count: number;
+    }>();
+
+  return c.json({
+    window,
+    category: category || null,
+    agents: rows.results ?? [],
+  });
+}
+
+/**
+ * GET /api/public/agents/new — most recently-created public/unlisted agents.
+ */
+export async function handleNewestAgents(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const url = new URL(c.req.url);
+  const category = (url.searchParams.get("category") ?? "").trim();
+  const binds: string[] = [];
+  let sql = `
+    SELECT a.id, a.slug, a.name, a.description, a.category, a.updated_at, a.created_at,
+           u.handle AS handle, u.avatar_url AS avatar_url
+      FROM agents a
+      JOIN users u ON u.id = a.creator_user_id
+     WHERE a.visibility IN ('public', 'unlisted')
+  `;
+  if (category) {
+    sql += " AND a.category = ?";
+    binds.push(category);
+  }
+  sql += " ORDER BY a.created_at DESC LIMIT 30";
+  const rows = await db
+    .prepare(sql)
+    .bind(...binds)
+    .all();
+  return c.json({ agents: rows.results ?? [] });
+}
+
 /**
  * GET /api/public/agents/search?q=...&category=...
  *

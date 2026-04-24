@@ -2,6 +2,7 @@ import {
   Activity,
   ArrowRight,
   BookOpen,
+  Compass,
   GitFork,
   Github,
   Rss,
@@ -121,6 +122,10 @@ export default function Home() {
           <span className="kbd">v0.0.0</span>
         </div>
         <nav className="flex items-center gap-2">
+          <Link to="/explore" className="btn btn-ghost" data-testid="home-explore-link">
+            <Compass className="lu" />
+            Explore
+          </Link>
           <Link to="/help" className="btn btn-ghost" data-testid="home-help-link">
             <BookOpen className="lu" />
             도움말
