@@ -1309,12 +1309,15 @@ p {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── Floating "node dust" — decorative dots on the canvas-bg band ── */
+/* ── Floating "node dust" — decorative bob on the canvas-bg band ────
+ * Pure translateY. The initial release rotated 1deg too, but that
+ * combined with `.wv-node.st-running::before` conic-gradient mask
+ * (mask-composite: xor) and leaked the ring outline at an angle. */
 @keyframes wv-node-float {
-  0%   { transform: translateY(0)   rotate(0deg); }
-  50%  { transform: translateY(-6px) rotate(1deg); }
-  100% { transform: translateY(0)   rotate(0deg); }
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
 }
-.wv-float { animation: wv-node-float 6s ease-in-out infinite; }
+.wv-float { animation: wv-node-float 6s ease-in-out infinite; will-change: transform; }
 .wv-float-d2 { animation-delay: 1.5s; }
 .wv-float-d3 { animation-delay: 3s; }

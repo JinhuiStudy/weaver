@@ -273,16 +273,20 @@ export default function Home() {
           <div className="wv-float">
             <WvNode type="input" label="webhook" body="POST /refund" />
           </div>
-          <div className="wv-float wv-float-d2">
-            <WvNode
-              type="agent"
-              kind="AGENT · CLAUDE"
-              label="policy_check"
-              body="model: sonnet-4-6 · temp: 0.2"
-              state="running"
-              statusPill={<span style={{ color: "var(--weaver-indigo)" }}>running</span>}
-            />
-          </div>
+          {/*
+            Running agent stays OUTSIDE the wv-float wrapper — its
+            `.st-running::before` conic-gradient uses mask-composite:xor and
+            any additional transform on an ancestor fuzzes the mask edges
+            (see the outline glitch reported in the launched hero).
+          */}
+          <WvNode
+            type="agent"
+            kind="AGENT · CLAUDE"
+            label="policy_check"
+            body="model: sonnet-4-6 · temp: 0.2"
+            state="running"
+            statusPill={<span style={{ color: "var(--weaver-indigo)" }}>running</span>}
+          />
           <div className="wv-float wv-float-d3">
             <WvNode type="tool" label="stripe_lookup" body="GET /charges/:id" state="selected" />
           </div>
