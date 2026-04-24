@@ -223,17 +223,44 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
   const [running, setRunning] = useState(false);
   const onRun = useCallback(async () => {
     setRunning(true);
+    setRunError(null);
     try {
       const { id: runId } = await createRun({ toolId: params.id });
       navigate(`/tools/${params.id}/runs/${runId}`);
     } catch (err) {
       console.error("run failed", err);
+      const message =
+        err instanceof Error && err.message.includes("429")
+          ? "오늘 run 10건 한도를 다 썼어요. 내일 다시 시도해 주세요."
+          : err instanceof Error && err.message.includes("401")
+            ? "로그인이 필요해요. 잠시 후 로그인 페이지로 이동합니다."
+            : "Run 생성에 실패했어요. canvas graph 를 확인하고 다시 시도해 주세요.";
+      setRunError(message);
     } finally {
       setRunning(false);
     }
   }, [params.id, navigate]);
 
   const [publishing, setPublishing] = useState(false);
+  const [toast, setToast] = useState<{ message: string; tone: "ok" | "warn" } | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const flashToast = useCallback((message: string, tone: "ok" | "warn" = "ok") => {
+    setToast({ message, tone });
+    window.setTimeout(() => setToast(null), tone === "warn" ? 4500 : 2500);
+  }, []);
+  const humanizeError = useCallback((err: unknown, fallback: string): string => {
+    if (!(err instanceof Error)) return fallback;
+    const msg = err.message;
+    if (msg.includes("429"))
+      return "하루 한도를 초과했어요. 잠시 후 다시 시도하거나 BYOK 을 연결해 주세요.";
+    if (msg.includes("401")) return "세션이 만료됐어요. /login 페이지에서 다시 로그인해 주세요.";
+    if (msg.includes("403")) return "이 agent 에 대한 권한이 없어요.";
+    if (msg.includes("400"))
+      return "요청이 올바르지 않아요. canvas 를 확인하고 다시 저장해 주세요.";
+    if (/5\d\d/.test(msg)) return "서버가 잠시 이상해요. 몇 초 뒤 다시 시도해 주세요.";
+    return fallback;
+  }, []);
+
   const onPublish = useCallback(async () => {
     const state = useCanvas.getState();
     const definition = {
@@ -273,14 +300,23 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         const msg = await res.text();
         throw new Error(`save failed (${res.status}): ${msg}`);
       }
+      flashToast(savedAgent ? "✓ 새 버전으로 저장됐어요" : "✓ workspace 에 저장됐어요");
       navigate("/");
     } catch (err) {
       console.error("publish failed", err);
-      window.alert(`저장 실패: ${err instanceof Error ? err.message : String(err)}`);
+      flashToast(
+        humanizeError(
+          err,
+          savedAgent
+            ? "버전 저장에 실패했어요. canvas 를 로컬에 export 한 뒤 다시 시도해 주세요."
+            : "저장에 실패했어요. 네트워크를 확인하고 다시 시도해 주세요.",
+        ),
+        "warn",
+      );
     } finally {
       setPublishing(false);
     }
-  }, [savedAgent, params.id, navigate]);
+  }, [savedAgent, params.id, navigate, flashToast, humanizeError]);
 
   // Hidden file input triggered by the Import button; separated so we can
   // reuse the hydrate logic from elsewhere (e.g. ⌘K palette).
@@ -483,6 +519,38 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           </Button>
         </div>
       </header>
+
+      {runError ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 border-b border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs text-rose-200"
+          data-testid="builder-run-error"
+        >
+          <span>⚠️ {runError}</span>
+          <button
+            type="button"
+            onClick={() => setRunError(null)}
+            className="rounded px-2 py-1 text-rose-300 hover:text-rose-100"
+            aria-label="에러 닫기"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div
+          role="status"
+          className={`pointer-events-none fixed top-14 left-1/2 z-30 -translate-x-1/2 rounded-full border px-4 py-2 text-xs shadow-[0_4px_12px_rgba(0,0,0,0.5)] backdrop-blur ${
+            toast.tone === "warn"
+              ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+              : "border-weaver-indigo/40 bg-surface-1/90 text-text-primary"
+          }`}
+          data-testid="builder-toast"
+        >
+          {toast.message}
+        </div>
+      ) : null}
 
       <div className="flex flex-1 overflow-hidden">
         <Palette />

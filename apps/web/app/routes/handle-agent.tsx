@@ -127,7 +127,24 @@ export default function HandleAgentRoute() {
   const [subscribed, setSubscribed] = useState(data.subscribed);
   const [subBusy, setSubBusy] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportToast, setReportToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: "ok" | "warn" } | null>(null);
+
+  function flashToast(message: string, tone: "ok" | "warn" = "ok") {
+    setToast({ message, tone });
+    window.setTimeout(() => setToast(null), tone === "warn" ? 4000 : 2500);
+  }
+
+  function humanizeError(err: unknown, fallback: string): string {
+    if (!(err instanceof Error)) return fallback;
+    const msg = err.message;
+    if (msg.includes("429"))
+      return "하루 한도를 초과했어요. 내일 다시 시도하거나 BYOK 을 연결해 주세요.";
+    if (msg.includes("401")) return "로그인이 필요한 작업이에요. /login 으로 이동해 주세요.";
+    if (msg.includes("403")) return "권한이 없어서 이 작업을 완료할 수 없어요.";
+    if (msg.includes("404")) return "대상을 찾지 못했어요. 새로고침 후 다시 시도해 주세요.";
+    if (msg.includes("5")) return "서버가 잠시 이상해요. 몇 초 뒤 다시 시도해 주세요.";
+    return fallback;
+  }
 
   const nodes = definition?.nodes ?? [];
   const edges = definition?.edges ?? [];
@@ -145,9 +162,13 @@ export default function HandleAgentRoute() {
         throw new Error(`fork failed (${res.status}): ${msg}`);
       }
       const body = (await res.json()) as { id: string };
+      flashToast("✓ 내 워크스페이스로 포크됐어요");
       navigate(`/builder/${body.id}`);
     } catch (err) {
-      window.alert(`Fork 실패: ${err instanceof Error ? err.message : String(err)}`);
+      flashToast(
+        humanizeError(err, "Fork 에 실패했어요. 네트워크를 확인하고 다시 시도해 주세요."),
+        "warn",
+      );
     } finally {
       setForking(false);
     }
@@ -168,8 +189,9 @@ export default function HandleAgentRoute() {
       if (!res.ok) throw new Error(`subscribe failed (${res.status})`);
       const body = (await res.json()) as { subscribed: boolean };
       setSubscribed(body.subscribed);
+      flashToast(body.subscribed ? "🔔 구독했어요" : "구독 해제됨");
     } catch (err) {
-      window.alert(`구독 실패: ${err instanceof Error ? err.message : String(err)}`);
+      flashToast(humanizeError(err, "구독 토글에 실패했어요. 다시 시도해 주세요."), "warn");
     } finally {
       setSubBusy(false);
     }
@@ -312,13 +334,17 @@ export default function HandleAgentRoute() {
         </div>
       </section>
 
-      {reportToast ? (
+      {toast ? (
         <div
           role="status"
-          className="pointer-events-none fixed top-14 left-1/2 z-20 -translate-x-1/2 rounded-full border border-weaver-indigo/40 bg-surface-1/90 px-4 py-2 text-xs text-text-primary shadow-[0_4px_12px_rgba(0,0,0,0.5)] backdrop-blur"
-          data-testid="report-toast"
+          className={`pointer-events-none fixed top-14 left-1/2 z-20 -translate-x-1/2 rounded-full border px-4 py-2 text-xs shadow-[0_4px_12px_rgba(0,0,0,0.5)] backdrop-blur ${
+            toast.tone === "warn"
+              ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+              : "border-weaver-indigo/40 bg-surface-1/90 text-text-primary"
+          }`}
+          data-testid={toast.tone === "warn" ? "page-toast-warn" : "report-toast"}
         >
-          {reportToast}
+          {toast.message}
         </div>
       ) : null}
 
@@ -328,8 +354,7 @@ export default function HandleAgentRoute() {
           onClose={() => setReportOpen(false)}
           onDone={() => {
             setReportOpen(false);
-            setReportToast("🚩 신고 접수됨 — 관리자가 확인합니다");
-            window.setTimeout(() => setReportToast(null), 2500);
+            flashToast("🚩 신고 접수됨 — 관리자가 확인합니다");
           }}
         />
       ) : null}
