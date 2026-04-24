@@ -1,3 +1,10 @@
+import {
+  GEN_AI_SYSTEM,
+  genAiAttributes,
+  newTraceId,
+  setAttributes,
+  setStatus,
+} from "@weaver/observability";
 import { Hono } from "hono";
 import {
   handleCreateAgent,
@@ -8,13 +15,16 @@ import {
   handleListAgents,
   handleUpdateAgent,
 } from "./api/agents";
+import { handleGetRun, handleListMyRuns } from "./api/runs";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
-import { requireRateLimit } from "./auth/rate-limit";
+import { bumpBy, requireRateLimit, todayCount } from "./auth/rate-limit";
 import { mountAuthRoutes } from "./auth/routes";
 import { type AiBinding, composeWithAi } from "./compose/ai";
+import { estimateNeurons, NEURONS_DAILY_CAP } from "./compose/cost";
 import { applyComposeIntent, type CanvasSnapshot, parseComposeIntent } from "./compose/stub";
 import { processPendingRuns } from "./cron";
 import type { AgentRun, StepEdge, StepNode } from "./executor/step";
+import { newExporter, newTracer, type TracingEnv } from "./tracing";
 
 /**
  * Cloudflare Worker entry. Minimal Hono app.
@@ -26,7 +36,7 @@ import type { AgentRun, StepEdge, StepNode } from "./executor/step";
  *   • scheduled()              — Cron; every minute, advance pending runs
  *                                one step via `processPendingRuns`.
  */
-type Env = {
+type Env = TracingEnv & {
   AI?: AiBinding;
   DB?: D1Database;
   GITHUB_OAUTH_CLIENT_ID?: string;
@@ -48,6 +58,11 @@ app.get("/", (c) => c.text("weaver-runtime ok"));
 app.get("/health", (c) => c.json({ ok: true, version: "0.0.0" }));
 
 mountAuthRoutes(app);
+
+// Sprint 0 D5: per-user daily cap enforced BEFORE the handler writes to D1
+// so a spammer can't blow past Workers AI's 10k neurons/day Free tier.
+// Declared up here so /api/me can reference it when building today's quota.
+const RUNS_DAILY_CAP = 10;
 
 app.get("/api/agents", requireAuth(), handleListAgents);
 app.post("/api/agents", requireAuth(), handleCreateAgent);
@@ -83,7 +98,28 @@ app.get("/api/me", requireAuth(), async (c) => {
     return c.json({ error: "session references a user or org that no longer exists" }, 404);
   }
 
-  return c.json({ user: userRow, org: orgRow });
+  const now = Date.now();
+  const [neuronsUsed, runsUsed] = await Promise.all([
+    todayCount(db, session.sub, "neurons", now),
+    todayCount(db, session.sub, "runs", now),
+  ]);
+
+  return c.json({
+    user: userRow,
+    org: orgRow,
+    quota: {
+      neurons: {
+        used: neuronsUsed,
+        cap: NEURONS_DAILY_CAP,
+        remaining: Math.max(0, NEURONS_DAILY_CAP - neuronsUsed),
+      },
+      runs: {
+        used: runsUsed,
+        cap: RUNS_DAILY_CAP,
+        remaining: Math.max(0, RUNS_DAILY_CAP - runsUsed),
+      },
+    },
+  });
 });
 
 app.post("/api/compose", async (c) => {
@@ -96,16 +132,60 @@ app.post("/api/compose", async (c) => {
   const prompt = typeof body.prompt === "string" ? body.prompt : "";
   const canvas: CanvasSnapshot = body.canvas ?? { nodes: [], edges: [] };
   const ai = c.env.AI;
-  let intent: ReturnType<typeof parseComposeIntent>;
-  let next: CanvasSnapshot;
-  if (ai) {
-    const result = await composeWithAi({ ai, prompt, canvas });
-    intent = result.intent;
-    next = result.canvas;
-  } else {
-    intent = parseComposeIntent(prompt);
-    next = applyComposeIntent(canvas, intent);
+  const session = c.get("session");
+  const db = c.env.DB;
+
+  const tracer = newTracer(c.env);
+  const exporter = newExporter(c.env);
+
+  const { intent, next, usedNeurons } = await tracer.withSpan("compose", async (span) => {
+    setAttributes(span, {
+      "weaver.compose.prompt_length": prompt.length,
+      "weaver.compose.canvas_nodes": canvas.nodes.length,
+      "weaver.compose.canvas_edges": canvas.edges.length,
+      "weaver.compose.used_ai": Boolean(ai),
+    });
+    if (ai) {
+      const result = await tracer.withSpan("compose.llm_call", async (llmSpan) => {
+        const composed = await composeWithAi({ ai, prompt, canvas });
+        // Estimate neurons from prompt + response sizes. response body size
+        // stands in for completion chars — Workers AI doesn't return usage.
+        const responseChars = JSON.stringify(composed.intent).length;
+        const est = estimateNeurons(prompt.length, responseChars);
+        setAttributes(
+          llmSpan,
+          genAiAttributes({
+            system: GEN_AI_SYSTEM.WORKERS_AI,
+            requestModel: "@cf/meta/llama-3.3-70b-instruct",
+            inputTokens: est.inputTokens,
+            outputTokens: est.outputTokens,
+            neurons: est.neurons,
+          }),
+        );
+        return { composed, neurons: est.neurons };
+      });
+      setAttributes(span, { "weaver.neurons": result.neurons });
+      return {
+        intent: result.composed.intent,
+        next: result.composed.canvas,
+        usedNeurons: result.neurons,
+      };
+    }
+    const parsed = parseComposeIntent(prompt);
+    const applied = applyComposeIntent(canvas, parsed);
+    return { intent: parsed, next: applied, usedNeurons: 0 };
+  });
+
+  // Meter Workers AI consumption so the free-tier cap is observable in
+  // /api/me. `session` is optional — /api/compose doesn't currently require
+  // auth, so unauthenticated calls (local dev) skip attribution.
+  if (db && session && usedNeurons > 0) {
+    await bumpBy(db, session.sub, "neurons", usedNeurons, Date.now());
   }
+
+  // Fire-and-forget — never block the response on Axiom.
+  c.executionCtx.waitUntil(exporter.flush(tracer));
+
   return c.json({
     intent,
     canvas: next,
@@ -114,6 +194,7 @@ app.post("/api/compose", async (c) => {
       addedEdges: next.edges.slice(canvas.edges.length),
     },
     usedAi: Boolean(ai),
+    neurons: usedNeurons,
   });
 });
 
@@ -121,12 +202,9 @@ app.post("/api/compose", async (c) => {
  * POST /api/runs — create an agent_run row. Returns `{ id, status: "pending" }`
  * so the UI can navigate to `/tools/:id/runs/:runId`. Falls back to a
  * synthetic id when `env.DB` is missing so the frontend remains wired in
- * dev without a Cloudflare account.
+ * dev without a Cloudflare account. The RUNS_DAILY_CAP constant is declared
+ * near the top of the file so `/api/me`'s quota block can reference it.
  */
-// Sprint 0 D5: per-user daily cap enforced BEFORE the handler writes to D1
-// so a spammer can't blow past Workers AI's 10k neurons/day Free tier.
-const RUNS_DAILY_CAP = 10;
-
 app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), async (c) => {
   let body: {
     tool_id?: string;
@@ -146,6 +224,7 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
   if (!session) return c.json({ error: "authentication required" }, 401);
 
   const id = genId();
+  const traceId = newTraceId(); // Sprint 2: every run carries an OTEL trace.
   const now = Date.now();
   const db = c.env.DB;
   if (db) {
@@ -153,8 +232,8 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
       .prepare(
         `INSERT INTO agent_runs
           (id, tool_id, tool_version, org_id, status, input, state, graph_json,
-           created_at, updated_at, retry_count, cost_usd_micro, created_by_user_id)
-         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, 0, 0, ?)`,
+           trace_id, created_at, updated_at, retry_count, cost_usd_micro, created_by_user_id)
+         VALUES (?, ?, ?, ?, 'pending', ?, '{}', ?, ?, ?, ?, 0, 0, ?)`,
       )
       .bind(
         id,
@@ -163,14 +242,19 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
         session.org,
         JSON.stringify(body.input ?? {}),
         body.graph == null ? null : JSON.stringify(body.graph),
+        traceId,
         now,
         now,
         session.sub,
       )
       .run();
   }
-  return c.json({ id, status: "pending", tool_id: toolId });
+  return c.json({ id, status: "pending", tool_id: toolId, trace_id: traceId });
 });
+
+// Sprint 2 D5: Run viewer backing data.
+app.get("/api/runs", requireAuth(), handleListMyRuns);
+app.get("/api/runs/:id", requireAuth(), handleGetRun);
 
 /**
  * Cron body — extracted so we can call it both from `scheduled()` (Cloudflare
@@ -185,7 +269,7 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
  * tool edit mid-run doesn't break in-flight executions. We group by
  * graph_json so processPendingRuns can assume a single graph per batch.
  */
-async function tickOnce(db: D1Database, now: number): Promise<void> {
+async function tickOnce(env: Env, db: D1Database, now: number): Promise<void> {
   const rows = await db
     .prepare(
       `SELECT id, tool_id, tool_version, org_id, status, input,
@@ -212,14 +296,66 @@ async function tickOnce(db: D1Database, now: number): Promise<void> {
     byGraph.get(key)!.push(rowToRun(r));
   }
 
+  const tracer = newTracer(env);
+
   for (const [graphJson, runs] of byGraph) {
     const graph = parseGraphOrFailed(graphJson);
     const { updated } = processPendingRuns({ runs, graph, now });
-    for (const next of updated) {
+
+    for (let i = 0; i < updated.length; i++) {
+      const next = updated[i];
+      const prev = runs[i];
+      if (!next || !prev) continue;
+
+      // One OTEL span per step transition. Root of each run's trace is
+      // seeded from agent_runs.trace_id created at /api/runs time, so
+      // cross-cron steps in the same run share a trace.
+      const rootTraceId = prev.trace_id ?? newTraceId();
+      const span = tracer.startSpan(`run.step.${prev.status}->${next.status}`);
+      // Override traceId to the per-run trace so multi-tick runs thread.
+      span.traceId = rootTraceId;
+      setAttributes(span, {
+        "weaver.run_id": prev.id,
+        "weaver.tool_id": prev.tool_id,
+        "weaver.node_id": next.current_node_id ?? "",
+        "weaver.from_status": prev.status,
+        "weaver.to_status": next.status,
+      });
+      if (next.status === "failed") {
+        setStatus(span, { code: "ERROR", message: "state machine entered failed" });
+      } else if (next.status === "complete") {
+        setStatus(span, { code: "OK" });
+      }
+      tracer.endSpan(span);
+
+      // Persist one run_history row per step so the Run Viewer has a
+      // durable timeline even before Axiom ingests the trace.
+      const durationMs = Math.max(0, next.updated_at - prev.updated_at);
+      await db
+        .prepare(
+          `INSERT INTO run_history
+             (id, run_id, node_id, node_type, input, output, duration_ms, cost_usd_micro, span_id, error_message, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+        )
+        .bind(
+          genId(),
+          prev.id,
+          next.current_node_id ?? "",
+          lookupNodeType(graph, next.current_node_id),
+          null,
+          null,
+          durationMs,
+          span.spanId,
+          next.status === "failed" ? "state-machine failed" : null,
+          next.updated_at,
+        )
+        .run();
+
       await db
         .prepare(
           `UPDATE agent_runs
-             SET status = ?, current_node_id = ?, state = ?, updated_at = ?, completed_at = ?
+             SET status = ?, current_node_id = ?, state = ?,
+                 updated_at = ?, completed_at = ?, trace_id = COALESCE(trace_id, ?)
            WHERE id = ?`,
         )
         .bind(
@@ -228,11 +364,22 @@ async function tickOnce(db: D1Database, now: number): Promise<void> {
           JSON.stringify(next.state ?? {}),
           next.updated_at,
           next.completed_at,
+          rootTraceId,
           next.id,
         )
         .run();
     }
   }
+
+  // Ship this tick's spans — fire-and-forget via the Exporter; NoopExporter
+  // just drains when AXIOM_TOKEN isn't set, so this is always safe.
+  const exporter = newExporter(env);
+  await exporter.flush(tracer);
+}
+
+function lookupNodeType(graph: { nodes: StepNode[] }, nodeId: string | null): string {
+  if (!nodeId) return "unknown";
+  return graph.nodes.find((n) => n.id === nodeId)?.type ?? "unknown";
 }
 
 interface AgentRunRow {
@@ -295,6 +442,9 @@ export default {
   fetch: app.fetch,
   async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
     if (!env.DB) return;
-    await tickOnce(env.DB, Date.now());
+    // Await directly — scheduled()'s lifetime already covers the full tick,
+    // and miniflare's test harness doesn't resolve waitUntil tasks before
+    // returning, which would make integration tests flaky.
+    await tickOnce(env, env.DB, Date.now());
   },
 };

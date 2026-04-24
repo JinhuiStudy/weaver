@@ -10,6 +10,67 @@ export type RateLimitResult = {
 };
 
 /**
+ * Add `delta` to the per-user daily counter for `resource`. No cap check —
+ * used for metering (e.g. Workers AI neurons) where we track consumption
+ * continuously but only gate at specific moments.
+ */
+export async function bumpBy(
+  db: D1Database,
+  userId: string,
+  resource: string,
+  delta: number,
+  nowMs: number,
+): Promise<{ count: number; windowStart: number }> {
+  if (delta <= 0) {
+    const windowStart = Math.floor(nowMs / MS_PER_DAY);
+    const row = await db
+      .prepare(
+        "SELECT count FROM rate_limits WHERE user_id = ? AND resource = ? AND window_start = ?",
+      )
+      .bind(userId, resource, windowStart)
+      .first<{ count: number }>();
+    return { count: row?.count ?? 0, windowStart };
+  }
+  const windowStart = Math.floor(nowMs / MS_PER_DAY);
+  await db
+    .prepare(
+      `INSERT INTO rate_limits (user_id, resource, window_start, count)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(user_id, resource, window_start)
+       DO UPDATE SET count = count + ?`,
+    )
+    .bind(userId, resource, windowStart, delta, delta)
+    .run();
+  const row = await db
+    .prepare(
+      "SELECT count FROM rate_limits WHERE user_id = ? AND resource = ? AND window_start = ?",
+    )
+    .bind(userId, resource, windowStart)
+    .first<{ count: number }>();
+  return { count: row?.count ?? 0, windowStart };
+}
+
+/**
+ * Read-only lookup for today's consumption of `resource`. Returns 0 when no
+ * row exists yet (user hasn't touched the resource today).
+ */
+export async function todayCount(
+  db: D1Database,
+  userId: string,
+  resource: string,
+  nowMs: number,
+): Promise<number> {
+  const windowStart = Math.floor(nowMs / MS_PER_DAY);
+  const row = await db
+    .prepare(
+      "SELECT count FROM rate_limits WHERE user_id = ? AND resource = ? AND window_start = ?",
+    )
+    .bind(userId, resource, windowStart)
+    .first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
+/**
  * Atomically increments the per-user daily counter for `resource` and returns
  * whether the caller is still under `cap`. A single `INSERT ... ON CONFLICT`
  * keeps this race-safe under concurrent Cron + HTTP traffic — D1 serializes

@@ -20,6 +20,9 @@ importers:
       '@weaver/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@weaver/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       hono:
         specifier: ^4.6.0
         version: 4.12.14
@@ -127,6 +130,15 @@ importers:
       valibot:
         specifier: ^0.42.1
         version: 0.42.1(typescript@5.9.3)
+    devDependencies:
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(lightningcss@1.32.0)
+
+  packages/observability:
     devDependencies:
       typescript:
         specifier: ^5.9.3

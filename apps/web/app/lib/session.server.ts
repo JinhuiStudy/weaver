@@ -62,7 +62,12 @@ export async function loadSessionServer(request: Request, env: Env): Promise<Ses
 }
 
 export function isDev(env: Env): boolean {
-  return (env.RUNTIME_URL ?? "").startsWith("http://localhost");
+  const url = env.RUNTIME_URL ?? "";
+  // Treat "no RUNTIME_URL" / localhost / vitest-style hosts as dev so Playwright,
+  // Vite dev, and tests all share the same fallback path. Production keeps
+  // RUNTIME_URL pointing at the live worker so this branch stays dormant.
+  if (url === "") return !env.RUNTIME;
+  return url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1");
 }
 
 function devSession(): Session {
@@ -75,5 +80,9 @@ function devSession(): Session {
       avatar_url: null,
     },
     org: { id: "dev-org-000000000000000000000", slug: "dev-personal", name: "Dev personal" },
+    quota: {
+      neurons: { used: 7, cap: 50, remaining: 43 },
+      runs: { used: 2, cap: 10, remaining: 8 },
+    },
   };
 }

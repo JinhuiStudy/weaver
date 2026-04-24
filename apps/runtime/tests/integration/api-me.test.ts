@@ -54,4 +54,43 @@ describe("GET /api/me", () => {
     expect(body.org.id).toBe(session.orgId);
     expect(body.org.slug).toBe("me-endpoint-personal");
   });
+
+  it("includes today's Free-tier quota (neurons + runs) starting at 0/50 and 0/10", async () => {
+    const session = await createAuthedSession({ githubId: 810, login: "fresh-quota" });
+    const res = await SELF.fetch("https://runtime.test/api/me", {
+      headers: { cookie: session.cookie },
+    });
+    const body = (await res.json()) as {
+      quota: {
+        neurons: { used: number; cap: number; remaining: number };
+        runs: { used: number; cap: number; remaining: number };
+      };
+    };
+    expect(body.quota.neurons.cap).toBe(50);
+    expect(body.quota.neurons.used).toBe(0);
+    expect(body.quota.neurons.remaining).toBe(50);
+    expect(body.quota.runs.cap).toBe(10);
+    expect(body.quota.runs.used).toBe(0);
+    expect(body.quota.runs.remaining).toBe(10);
+  });
+
+  it("runs quota.used climbs by 1 for each /api/runs creation", async () => {
+    const session = await createAuthedSession({ githubId: 811, login: "quota-climb" });
+    // Consume 3 runs.
+    for (let i = 0; i < 3; i++) {
+      await SELF.fetch("https://runtime.test/api/runs", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: session.cookie },
+        body: JSON.stringify({ tool_id: "demo" }),
+      });
+    }
+    const res = await SELF.fetch("https://runtime.test/api/me", {
+      headers: { cookie: session.cookie },
+    });
+    const body = (await res.json()) as {
+      quota: { runs: { used: number; remaining: number } };
+    };
+    expect(body.quota.runs.used).toBe(3);
+    expect(body.quota.runs.remaining).toBe(7);
+  });
 });

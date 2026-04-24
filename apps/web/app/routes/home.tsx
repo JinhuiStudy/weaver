@@ -1,10 +1,10 @@
-import { ArrowRight, Github, Sparkles } from "lucide-react";
+import { Activity, ArrowRight, Github, Sparkles, Zap } from "lucide-react";
 import { Link, useLoaderData } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
 import { WvNode } from "~/components/canvas/WvNode";
 import { Badge } from "~/components/ui";
 import type { Session } from "~/lib/session";
-import { callRuntime, loadSessionServer } from "~/lib/session.server";
+import { callRuntime, isDev, loadSessionServer } from "~/lib/session.server";
 import type { Route } from "./+types/home";
 
 type AgentSummary = {
@@ -15,6 +15,15 @@ type AgentSummary = {
   visibility: string;
   category: string | null;
   updated_at: number;
+};
+
+type RunSummary = {
+  id: string;
+  tool_id: string;
+  status: string;
+  created_at: number;
+  completed_at: number | null;
+  trace_id: string | null;
 };
 
 export function meta(_: Route.MetaArgs) {
@@ -32,21 +41,62 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
   const session = await loadSessionServer(request, env);
   let agents: AgentSummary[] = [];
+  let runs: RunSummary[] = [];
   if (session) {
-    const res = await callRuntime(env, "/api/agents", request);
-    if (res.ok) {
+    const [agentsRes, runsRes] = await Promise.all([
+      callRuntime(env, "/api/agents", request),
+      callRuntime(env, "/api/runs", request),
+    ]);
+    if (agentsRes.ok) {
       try {
-        agents = ((await res.json()) as { agents: AgentSummary[] }).agents ?? [];
+        agents = ((await agentsRes.json()) as { agents: AgentSummary[] }).agents ?? [];
       } catch {
         agents = [];
       }
     }
+    if (runsRes.ok) {
+      try {
+        runs = ((await runsRes.json()) as { runs: RunSummary[] }).runs ?? [];
+      } catch {
+        runs = [];
+      }
+    } else if (isDev(env)) {
+      // Dev: runtime is offline, seed 3 fake runs so the "최근 runs" section
+      // shows up and Playwright can assert against it.
+      const now = Date.now();
+      runs = [
+        {
+          id: "dev-run-0000001",
+          tool_id: "demo",
+          status: "complete",
+          created_at: now - 30_000,
+          completed_at: now - 15_000,
+          trace_id: "a".repeat(32),
+        },
+        {
+          id: "dev-run-0000002",
+          tool_id: "demo",
+          status: "running",
+          created_at: now - 120_000,
+          completed_at: null,
+          trace_id: "b".repeat(32),
+        },
+        {
+          id: "dev-run-0000003",
+          tool_id: "demo",
+          status: "failed",
+          created_at: now - 1_800_000,
+          completed_at: now - 1_500_000,
+          trace_id: "c".repeat(32),
+        },
+      ];
+    }
   }
-  return { session, agents };
+  return { session, agents, runs };
 }
 
 export default function Home() {
-  const { session, agents } = useLoaderData<typeof loader>();
+  const { session, agents, runs } = useLoaderData<typeof loader>();
   return (
     <main className="min-h-screen">
       <header className="flex items-center justify-between border-b border-border px-8 py-4">
@@ -143,7 +193,12 @@ export default function Home() {
         </div>
       </section>
 
-      {session ? <MyAgentsSection agents={agents} /> : null}
+      {session ? (
+        <>
+          <MyAgentsSection agents={agents} />
+          <RecentRunsSection runs={runs} />
+        </>
+      ) : null}
 
       <section className="canvas-bg border-y border-border px-8 py-16 md:px-16">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-8">
@@ -259,6 +314,7 @@ function UserBadge({ session }: { session: Session }) {
   const avatar = session.user.avatar_url;
   return (
     <div className="flex items-center gap-2" data-testid="user-badge">
+      {session.quota ? <NeuronsGauge quota={session.quota.neurons} /> : null}
       {avatar ? (
         <img src={avatar} alt={handle} className="h-6 w-6 rounded-full border border-border" />
       ) : (
@@ -274,6 +330,88 @@ function UserBadge({ session }: { session: Session }) {
       </form>
     </div>
   );
+}
+
+function NeuronsGauge({ quota }: { quota: { used: number; cap: number; remaining: number } }) {
+  const pct = Math.min(100, (quota.used / Math.max(1, quota.cap)) * 100);
+  const tone = pct >= 80 ? "warn" : pct >= 50 ? "running" : "ok";
+  const toneClass =
+    tone === "warn"
+      ? "text-amber-400"
+      : tone === "running"
+        ? "text-weaver-indigo"
+        : "text-emerald-400";
+  return (
+    <div
+      className="hidden items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 py-1 font-mono text-[10px] text-text-secondary md:inline-flex"
+      title={`Workers AI · 오늘 ${quota.used}/${quota.cap} neurons 소비 · ${quota.remaining} 남음`}
+      data-testid="neurons-gauge"
+    >
+      <Zap className={`h-3 w-3 ${toneClass}`} />
+      <span>
+        <b className="text-text-primary">{quota.remaining}</b>
+        <span className="text-text-tertiary">/{quota.cap}</span>
+      </span>
+    </div>
+  );
+}
+
+function RecentRunsSection({ runs }: { runs: RunSummary[] }) {
+  if (runs.length === 0) return null;
+  return (
+    <section className="px-8 pt-4 pb-16 md:px-16" data-testid="recent-runs-section">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-4 flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.15em] text-text-tertiary">
+            최근 runs
+          </h2>
+          <span className="font-mono text-[10px] text-text-tertiary">{runs.length} / 50 표시</span>
+        </div>
+        <div className="flex flex-col gap-2">
+          {runs.slice(0, 10).map((r) => (
+            <Link
+              key={r.id}
+              to={`/tools/${r.tool_id}/runs/${r.id}`}
+              className="card card-b grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 hover:border-weaver-indigo"
+              data-testid="run-row"
+            >
+              <Activity className="lu text-text-tertiary" />
+              <span className="font-mono text-xs text-text-secondary">
+                <span className="text-text-primary">{r.tool_id}</span>
+                <span className="text-text-tertiary"> · </span>
+                <span className="text-text-tertiary">{r.id.slice(0, 8)}…</span>
+              </span>
+              <RunStatus status={r.status} />
+              <span className="font-mono text-[10px] text-text-tertiary">
+                {timeAgo(r.created_at)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RunStatus({ status }: { status: string }) {
+  if (status === "complete") return <Badge tone="ok">complete</Badge>;
+  if (status === "failed") return <Badge tone="warn">failed</Badge>;
+  if (status === "running")
+    return (
+      <Badge tone="running" pulse>
+        running
+      </Badge>
+    );
+  if (status === "pending") return <Badge tone="info">pending</Badge>;
+  return <Badge tone="muted">{status}</Badge>;
+}
+
+function timeAgo(ms: number): string {
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "방금";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+  return `${Math.floor(diff / 86_400_000)}일 전`;
 }
 
 const FEATURES = [

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+export type QuotaResource = { used: number; cap: number; remaining: number };
+
 export type Session = {
   user: {
     id: string;
@@ -9,6 +11,12 @@ export type Session = {
     avatar_url: string | null;
   };
   org: { id: string; slug: string; name: string };
+  /** Today's Free-tier consumption — added in Sprint 2 D4. Optional so older
+   *  /api/me responses still type-check. */
+  quota?: {
+    neurons: QuotaResource;
+    runs: QuotaResource;
+  };
 };
 
 /**
