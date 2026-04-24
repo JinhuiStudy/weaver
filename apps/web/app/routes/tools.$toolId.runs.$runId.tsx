@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, DollarSign, Zap } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, DollarSign, Zap } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData } from "react-router";
 import { Badge } from "~/components/ui";
@@ -168,14 +168,24 @@ export default function TraceRoute({ params }: Route.ComponentProps) {
             <StatusBadge status={detail?.run.status ?? (error ? "missing" : "loading")} />
           </div>
         </div>
-        <div className="font-mono text-[10px] text-text-tertiary">
-          tool {params.toolId}
-          {detail?.run.trace_id ? (
-            <>
-              {" · trace "}
-              <span title={detail.run.trace_id}>{detail.run.trace_id.slice(0, 12)}…</span>
-            </>
-          ) : null}
+        <div className="flex items-center gap-3">
+          <Link
+            to="/help#run-viewer"
+            className="btn btn-ghost btn-sm"
+            data-testid="run-viewer-help-link"
+          >
+            <BookOpen className="lu" />
+            도움말
+          </Link>
+          <div className="font-mono text-[10px] text-text-tertiary">
+            tool {params.toolId}
+            {detail?.run.trace_id ? (
+              <>
+                {" · trace "}
+                <span title={detail.run.trace_id}>{detail.run.trace_id.slice(0, 12)}…</span>
+              </>
+            ) : null}
+          </div>
         </div>
       </header>
 

@@ -43,7 +43,7 @@ const NODE_ICON_BY_KIND: Record<NodeKind, string> = {
 };
 
 function addNodeCommand(kind: NodeKind): Command {
-  const label = kind[0]!.toUpperCase() + kind.slice(1);
+  const label = (kind[0] ?? "").toUpperCase() + kind.slice(1);
   return {
     id: `add:${kind}`,
     label: `Add ${label} node`,
@@ -245,7 +245,6 @@ export function CommandPalette({
       role="dialog"
       aria-label="Command palette"
       aria-modal="true"
-      // biome-ignore lint/a11y/noStaticElementInteractions: backdrop captures click-outside to dismiss; keyboard dismissal is handled via window-level Escape in the input's onKeyDown.
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

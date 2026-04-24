@@ -58,8 +58,12 @@ export function parseComposeIntent(raw: string): ComposeIntent {
 
     const connect = clause.match(/^connect\s+(\S+)\s+to\s+(\S+)\b.*$/);
     if (connect) {
-      ops.push({ kind: "connect", sourceLabel: connect[1]!, targetLabel: connect[2]! });
-      continue;
+      const src = connect[1];
+      const dst = connect[2];
+      if (src && dst) {
+        ops.push({ kind: "connect", sourceLabel: src, targetLabel: dst });
+        continue;
+      }
     }
 
     // Unknown clause: bail out of the whole prompt so partial/ambiguous edits

@@ -1,4 +1,5 @@
-import { Activity, ArrowRight, Github, Sparkles, Zap } from "lucide-react";
+import { Activity, ArrowRight, BookOpen, GitFork, Github, Sparkles, Star, Zap } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link, useLoaderData } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
 import { WvNode } from "~/components/canvas/WvNode";
@@ -98,19 +99,26 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export default function Home() {
   const { session, agents, runs } = useLoaderData<typeof loader>();
   return (
-    <main className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-border px-8 py-4">
+    <main className="relative min-h-screen">
+      {/* Ambient gradient backdrop — sits behind everything, non-interactive. */}
+      <div className="aurora-backdrop" aria-hidden />
+
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/70 bg-bg-base/80 px-8 py-4 backdrop-blur">
         <div className="flex items-center gap-3">
           <WeaverMark className="h-6 w-6" />
           <span className="text-sm font-semibold tracking-tight">Weaver</span>
           <span className="kbd">v0.0.0</span>
         </div>
         <nav className="flex items-center gap-2">
+          <Link to="/help" className="btn btn-ghost" data-testid="home-help-link">
+            <BookOpen className="lu" />
+            도움말
+          </Link>
           <Link to="/design" className="btn btn-ghost">
             Design System
           </Link>
           <a
-            href="https://github.com/getweaver/weaver"
+            href="https://github.com/JinhuiStudy/weaver"
             className="btn btn-ghost"
             target="_blank"
             rel="noreferrer noopener"
@@ -135,51 +143,57 @@ export default function Home() {
         </nav>
       </header>
 
-      <section className="px-8 pt-24 pb-20 md:px-16">
+      <section className="relative px-8 pt-28 pb-24 md:px-16">
+        <div className="hero-grid" aria-hidden />
         <div className="mx-auto max-w-5xl">
-          <div className="mb-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.15em] text-weaver-indigo">
-            <span className="inline-block h-px w-6 bg-weaver-indigo" />
-            Open-source · $0 Free-tier
+          <div className="fade-up fade-up-1 mb-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.15em] text-weaver-cyan">
+            <span className="inline-block h-px w-6 bg-weaver-cyan" />
+            Open-source · $0 forever · 2026-W30 launch
           </div>
-          <h1 className="max-w-4xl text-[56px] font-semibold leading-[1.05] tracking-[-0.025em] md:text-[64px]">
-            AI 에이전트를 내부툴의{" "}
-            <em
-              className="font-medium not-italic"
-              style={{
-                backgroundImage: "linear-gradient(90deg, var(--weaver-indigo), var(--weaver-cyan))",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-              }}
-            >
-              원자 단위
-            </em>
-            로.
+          <h1 className="fade-up fade-up-1 max-w-4xl text-[56px] font-semibold leading-[1.05] tracking-[-0.025em] md:text-[72px]">
+            Fork agents.
+            <br />
+            Rate them. <span className="gradient-text font-medium">They evolve.</span>
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-text-secondary">
-            자연어로 내부툴을 만들면, 그 툴은 AI 에이전트 워크플로우로 돌아가고, 모든 실행은
-            자동으로 <b className="text-text-primary">trace · 비용 · eval</b>이 붙습니다. 전부 무료
-            tier만으로.
+          <p className="fade-up fade-up-2 mt-6 max-w-2xl text-base leading-relaxed text-text-secondary md:text-lg">
+            공개 에이전트를 한 번에 <b className="text-text-primary">fork</b> 하고, 👍/👎 로{" "}
+            <b className="text-text-primary">rate</b> 하면, 매일 밤 Workers AI 가 프롬프트를 미세
+            변형해 <b className="text-text-primary">evolve</b> 시킵니다. 유저 $0 · 운영 $0.
           </p>
 
-          <div className="mt-10 flex items-center gap-3">
+          <div className="fade-up fade-up-3 mt-10 flex flex-wrap items-center gap-3">
             <Link
               to="/builder/demo"
-              className="btn btn-primary btn-lg inline-flex items-center gap-1.5"
+              className="btn btn-primary btn-lg cta-glow inline-flex items-center gap-1.5"
             >
               시작하기
               <ArrowRight className="lu" />
             </Link>
-            <Link to="/design" className="btn btn-outlined btn-lg inline-flex items-center gap-1.5">
+            <Link
+              to="/help"
+              className="btn btn-outlined btn-lg inline-flex items-center gap-1.5"
+              data-testid="hero-help-link"
+            >
+              <BookOpen className="lu" />
+              사용법 도움말
+            </Link>
+            <Link to="/design" className="btn btn-ghost btn-lg inline-flex items-center gap-1.5">
               <Sparkles className="lu" />
-              Design System 보기
+              Design System
             </Link>
           </div>
 
-          <div className="mt-12 flex flex-wrap gap-6 font-mono text-xs text-text-tertiary">
-            <span>
-              <b className="text-text-primary">4</b> layers
-            </span>
+          <div className="fade-up fade-up-3 mt-14 grid max-w-3xl grid-cols-3 gap-4">
+            <Metric icon={<GitFork className="lu" />} value="Fork" body="공개 agent 한 번에 복제" />
+            <Metric icon={<Star className="lu" />} value="Rate" body="👍/👎 로 fitness 계산" />
+            <Metric
+              icon={<Sparkles className="lu" />}
+              value="Evolve"
+              body="밤새 자동 mutation + shadow eval"
+            />
+          </div>
+
+          <div className="mt-14 flex flex-wrap gap-6 font-mono text-xs text-text-tertiary">
             <span>
               <b className="text-text-primary">5</b> node types
             </span>
@@ -187,7 +201,10 @@ export default function Home() {
               <b className="text-text-primary">$0</b> 고정 월 비용
             </span>
             <span>
-              <b className="text-text-primary">2026-W30</b> launch target
+              <b className="text-text-primary">OTEL</b> trace 포함
+            </span>
+            <span>
+              <b className="text-text-primary">Apache-2.0</b> OSS
             </span>
           </div>
         </div>
@@ -200,20 +217,35 @@ export default function Home() {
         </>
       ) : null}
 
-      <section className="canvas-bg border-y border-border px-8 py-16 md:px-16">
+      <section className="canvas-bg relative border-y border-border px-8 py-20 md:px-16">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-8">
-          <WvNode type="input" label="webhook" body="POST /refund" />
-          <WvNode
-            type="agent"
-            kind="AGENT · CLAUDE"
-            label="policy_check"
-            body="model: sonnet-4-6 · temp: 0.2"
-            state="running"
-            statusPill={<span style={{ color: "var(--weaver-indigo)" }}>running</span>}
-          />
-          <WvNode type="tool" label="stripe_lookup" body="GET /charges/:id" state="selected" />
-          <WvNode type="branch" label="within_7d?" body="duration ≤ 7d" />
-          <WvNode type="output" label="approve_or_slack" body="POST webhook" durationPill="2.1s" />
+          <div className="wv-float">
+            <WvNode type="input" label="webhook" body="POST /refund" />
+          </div>
+          <div className="wv-float wv-float-d2">
+            <WvNode
+              type="agent"
+              kind="AGENT · CLAUDE"
+              label="policy_check"
+              body="model: sonnet-4-6 · temp: 0.2"
+              state="running"
+              statusPill={<span style={{ color: "var(--weaver-indigo)" }}>running</span>}
+            />
+          </div>
+          <div className="wv-float wv-float-d3">
+            <WvNode type="tool" label="stripe_lookup" body="GET /charges/:id" state="selected" />
+          </div>
+          <div className="wv-float wv-float-d2">
+            <WvNode type="branch" label="within_7d?" body="duration ≤ 7d" />
+          </div>
+          <div className="wv-float">
+            <WvNode
+              type="output"
+              label="approve_or_slack"
+              body="POST webhook"
+              durationPill="2.1s"
+            />
+          </div>
         </div>
       </section>
 
@@ -241,10 +273,37 @@ export default function Home() {
               박진희
             </a>
           </span>
-          <span className="font-mono">weaver.pages.dev</span>
+          <div className="flex items-center gap-4 font-mono">
+            <Link to="/help" className="hover:text-text-primary">
+              도움말
+            </Link>
+            <Link to="/design" className="hover:text-text-primary">
+              Design
+            </Link>
+            <a
+              href="https://github.com/JinhuiStudy/weaver"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="hover:text-text-primary"
+            >
+              GitHub
+            </a>
+          </div>
         </div>
       </footer>
     </main>
+  );
+}
+
+function Metric({ icon, value, body }: { icon: ReactNode; value: string; body: string }) {
+  return (
+    <div className="rounded-[10px] border border-border bg-surface-1/60 px-4 py-3 backdrop-blur">
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.15em] text-weaver-cyan">
+        {icon}
+        {value}
+      </div>
+      <div className="mt-1.5 text-xs leading-relaxed text-text-secondary">{body}</div>
+    </div>
   );
 }
 

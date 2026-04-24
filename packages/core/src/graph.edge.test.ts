@@ -197,6 +197,6 @@ describe("findCycle · null on DAG, path on cycle", () => {
     });
     const cycle = findCycle(g);
     expect(cycle).not.toBeNull();
-    expect(cycle && cycle.length).toBeGreaterThanOrEqual(2);
+    expect(cycle?.length).toBeGreaterThanOrEqual(2);
   });
 });

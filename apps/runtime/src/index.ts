@@ -292,8 +292,9 @@ async function tickOnce(env: Env, db: D1Database, now: number): Promise<void> {
   const byGraph = new Map<string, AgentRun[]>();
   for (const r of pending) {
     const key = r.graph_json ?? "";
-    if (!byGraph.has(key)) byGraph.set(key, []);
-    byGraph.get(key)!.push(rowToRun(r));
+    const list = byGraph.get(key);
+    if (list) list.push(rowToRun(r));
+    else byGraph.set(key, [rowToRun(r)]);
   }
 
   const tracer = newTracer(env);

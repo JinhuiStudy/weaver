@@ -115,7 +115,6 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
   if (!open) return null;
 
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop-to-dismiss; ESC handled by the window listener above.
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[10vh] backdrop-blur-sm"
       role="dialog"
@@ -207,18 +206,18 @@ export function HelpModal({ open, onClose }: { open: boolean; onClose: () => voi
             <ul className="space-y-1.5 text-xs">
               <li>
                 <a
-                  href="/design"
+                  href="/help"
                   className="inline-flex items-center gap-1 text-weaver-cyan hover:underline"
                 >
-                  Design System <ExternalLink className="h-3 w-3" />
+                  전체 사용법 /help <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
               <li>
                 <a
-                  href="/tools/demo/runs/01HXY"
+                  href="/design"
                   className="inline-flex items-center gap-1 text-weaver-cyan hover:underline"
                 >
-                  Trace viewer (placeholder) <ExternalLink className="h-3 w-3" />
+                  Design System <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
               <li>

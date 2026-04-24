@@ -1231,3 +1231,90 @@ p {
 .wv-node.n-tool .kind-icon { color: var(--node-tool); }
 .wv-node.n-branch .kind-icon { color: var(--node-branch); }
 .wv-node.n-output .kind-icon { color: var(--node-output); }
+
+/* ── Home / /help ambient backdrop — one layer, no perf cost ──────── */
+.aurora-backdrop {
+  pointer-events: none;
+  position: fixed;
+  inset: -10vh -10vw;
+  z-index: -1;
+  opacity: 0.55;
+  background:
+    radial-gradient(60% 60% at 20% 20%, var(--weaver-indigo-soft) 0%, transparent 60%),
+    radial-gradient(50% 50% at 80% 30%, var(--weaver-cyan-soft) 0%, transparent 60%),
+    radial-gradient(55% 55% at 50% 90%, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+  filter: blur(48px) saturate(120%);
+  animation: wv-aurora-drift 22s linear infinite;
+}
+@keyframes wv-aurora-drift {
+  0%   { transform: translate3d(0, 0, 0); }
+  50%  { transform: translate3d(2%, -1%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* ── Hero grid — subtle technical texture behind the headline ─────── */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 40%, black 0%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, black 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Gradient headline — reused by /help + home ──────────────────── */
+.gradient-text {
+  background-image: linear-gradient(90deg, var(--weaver-indigo), var(--weaver-cyan));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% 100%;
+  animation: wv-gradient-shift 8s ease-in-out infinite;
+}
+@keyframes wv-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ── CTA glow — the primary "Start" button gets an ambient ring ──── */
+.cta-glow {
+  position: relative;
+  isolation: isolate;
+}
+.cta-glow::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+  background: radial-gradient(50% 60% at 50% 50%, var(--weaver-indigo-ring) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.cta-glow:hover::before { opacity: 1; }
+
+/* ── Fade-up entrance used on home/help hero elements ────────────── */
+.fade-up {
+  animation: wv-fade-up 600ms var(--ease-out) both;
+}
+.fade-up-1 { animation-delay: 60ms; }
+.fade-up-2 { animation-delay: 140ms; }
+.fade-up-3 { animation-delay: 240ms; }
+@keyframes wv-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Floating "node dust" — decorative dots on the canvas-bg band ── */
+@keyframes wv-node-float {
+  0%   { transform: translateY(0)   rotate(0deg); }
+  50%  { transform: translateY(-6px) rotate(1deg); }
+  100% { transform: translateY(0)   rotate(0deg); }
+}
+.wv-float { animation: wv-node-float 6s ease-in-out infinite; }
+.wv-float-d2 { animation-delay: 1.5s; }
+.wv-float-d3 { animation-delay: 3s; }

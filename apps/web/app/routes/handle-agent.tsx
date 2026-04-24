@@ -1,4 +1,4 @@
-import { GitFork } from "lucide-react";
+import { BookOpen, GitFork } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
@@ -99,8 +99,12 @@ export default function HandleAgentRoute() {
           <span className="text-sm font-semibold tracking-tight">Weaver</span>
         </Link>
         <nav className="flex items-center gap-2">
-          <Link to="/design" className="btn btn-ghost">
-            Design System
+          <Link to="/help" className="btn btn-ghost btn-sm">
+            <BookOpen className="lu" />
+            도움말
+          </Link>
+          <Link to="/design" className="btn btn-ghost btn-sm">
+            Design
           </Link>
         </nav>
       </header>
