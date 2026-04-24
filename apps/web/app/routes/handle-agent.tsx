@@ -1,9 +1,9 @@
-import { BookOpen, GitFork } from "lucide-react";
+import { BellPlus, BellRing, BookOpen, GitFork, Rss } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
 import { Badge, Button } from "~/components/ui";
-import { callRuntime } from "~/lib/session.server";
+import { callRuntime, loadSessionServer } from "~/lib/session.server";
 import type { Route } from "./+types/handle-agent";
 
 type PublicAgent = {
@@ -42,9 +42,6 @@ export function meta({ data }: Route.MetaArgs) {
 
 export async function loader({ request, context, params }: Route.LoaderArgs) {
   const env = context.cloudflare.env;
-  // Route path is `:prefixedHandle/:slug`; the public URL must start with
-  // `@` so we 404 on anything else — that keeps this catch-all from
-  // stealing hits intended for future top-level sections.
   const { prefixedHandle, slug } = params as { prefixedHandle: string; slug: string };
   if (!prefixedHandle.startsWith("@")) {
     throw new Response("not found", { status: 404 });
@@ -58,14 +55,30 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     throw new Response("failed to load agent", { status: 502 });
   }
   const data = (await res.json()) as PublicAgent;
-  return data;
+
+  // If the visitor is logged in, check their subscription status so the
+  // Subscribe button can render the correct state server-side.
+  let subscribed = false;
+  const session = await loadSessionServer(request, env);
+  if (session) {
+    const subRes = await callRuntime(env, `/api/agents/${data.agent.id}/subscribe`, request);
+    if (subRes.ok) {
+      try {
+        subscribed = ((await subRes.json()) as { subscribed: boolean }).subscribed ?? false;
+      } catch {}
+    }
+  }
+
+  return { ...data, subscribed, loggedIn: Boolean(session), handle, slug };
 }
 
 export default function HandleAgentRoute() {
   const data = useLoaderData<typeof loader>();
-  const { agent, creator, definition } = data;
+  const { agent, creator, definition, handle, slug } = data;
   const navigate = useNavigate();
   const [forking, setForking] = useState(false);
+  const [subscribed, setSubscribed] = useState(data.subscribed);
+  const [subBusy, setSubBusy] = useState(false);
 
   const nodes = definition?.nodes ?? [];
   const edges = definition?.edges ?? [];
@@ -88,6 +101,28 @@ export default function HandleAgentRoute() {
       window.alert(`Fork 실패: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setForking(false);
+    }
+  };
+
+  const onToggleSubscribe = async () => {
+    if (!data.loggedIn) {
+      navigate("/login");
+      return;
+    }
+    setSubBusy(true);
+    try {
+      const res = await fetch(`/api/agents/${agent.id}/subscribe`, { method: "POST" });
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
+      if (!res.ok) throw new Error(`subscribe failed (${res.status})`);
+      const body = (await res.json()) as { subscribed: boolean };
+      setSubscribed(body.subscribed);
+    } catch (err) {
+      window.alert(`구독 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSubBusy(false);
     }
   };
 
@@ -137,7 +172,7 @@ export default function HandleAgentRoute() {
             ) : null}
           </div>
 
-          <div className="mt-8 flex items-center gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <Button
               variant="primary"
               onClick={onFork}
@@ -148,6 +183,26 @@ export default function HandleAgentRoute() {
             >
               Fork to workspace
             </Button>
+            <Button
+              variant={subscribed ? "outlined" : "secondary"}
+              onClick={onToggleSubscribe}
+              loading={subBusy}
+              disabled={subBusy}
+              leftIcon={subscribed ? <BellRing className="lu" /> : <BellPlus className="lu" />}
+              data-testid="subscribe-button"
+            >
+              {subscribed ? "구독 중" : "구독"}
+            </Button>
+            <a
+              href={`/api/public/agents/${handle}/${slug}/feed.json`}
+              className="btn btn-ghost inline-flex items-center gap-1.5"
+              data-testid="feed-json-link"
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              <Rss className="lu" />
+              JSON Feed
+            </a>
             <span className="font-mono text-xs text-text-tertiary">
               @{creator.handle}/{agent.slug}
             </span>

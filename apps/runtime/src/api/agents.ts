@@ -502,6 +502,292 @@ export async function handleForkAgent(c: Context): Promise<Response> {
   });
 }
 
+type AgentOutputRow = {
+  id: string;
+  agent_id: string;
+  agent_version_id: string;
+  run_id: string;
+  output_json: string;
+  published_at: number;
+};
+
+/**
+ * POST /api/agents/:id/subscribe — idempotent toggle. First POST creates a
+ * subscription; second removes it. Private agents refuse with 403 so a
+ * reader can't use subscription as a back-channel to detect a private
+ * id exists.
+ */
+export async function handleToggleSubscribe(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+
+  const agent = await db
+    .prepare("SELECT id, visibility FROM agents WHERE id = ?")
+    .bind(id)
+    .first<{ id: string; visibility: string }>();
+  if (!agent) return c.json({ error: "not found" }, 404);
+  if (agent.visibility === "private") {
+    return c.json({ error: "cannot subscribe to a private agent" }, 403);
+  }
+
+  const existing = await db
+    .prepare("SELECT user_id FROM subscriptions WHERE user_id = ? AND agent_id = ?")
+    .bind(session.sub, id)
+    .first();
+
+  if (existing) {
+    await db
+      .prepare("DELETE FROM subscriptions WHERE user_id = ? AND agent_id = ?")
+      .bind(session.sub, id)
+      .run();
+    return c.json({ subscribed: false, agent_id: id });
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO subscriptions (user_id, agent_id, created_at)
+       VALUES (?, ?, ?)`,
+    )
+    .bind(session.sub, id, Date.now())
+    .run();
+  return c.json({ subscribed: true, agent_id: id });
+}
+
+/**
+ * GET /api/me/feed — aggregate timeline of outputs from every agent the
+ * caller has subscribed to. Joined once so a single query services the
+ * whole feed; capped at 100 items to keep the response body small.
+ */
+export async function handleMyFeed(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const rows = await db
+    .prepare(
+      `SELECT
+         o.id          AS id,
+         o.agent_id    AS agent_id,
+         o.run_id      AS run_id,
+         o.output_json AS output_json,
+         o.published_at AS published_at,
+         a.slug        AS agent_slug,
+         a.name        AS agent_name,
+         u.handle      AS agent_handle
+       FROM subscriptions s
+       JOIN agents a ON a.id = s.agent_id
+       JOIN users  u ON u.id = a.creator_user_id
+       JOIN agent_outputs o ON o.agent_id = s.agent_id
+       WHERE s.user_id = ?
+       ORDER BY o.published_at DESC
+       LIMIT 100`,
+    )
+    .bind(session.sub)
+    .all<{
+      id: string;
+      agent_id: string;
+      run_id: string;
+      output_json: string;
+      published_at: number;
+      agent_slug: string;
+      agent_name: string;
+      agent_handle: string;
+    }>();
+
+  const items = (rows.results ?? []).map((row) => ({
+    id: row.id,
+    agent_id: row.agent_id,
+    agent_handle: row.agent_handle,
+    agent_slug: row.agent_slug,
+    agent_name: row.agent_name,
+    run_id: row.run_id,
+    content_text: extractSummary(safeParse(row.output_json)),
+    published_at: row.published_at,
+  }));
+  return c.json({ items });
+}
+
+/**
+ * GET /api/public/agents/search?q=...&category=...
+ *
+ * Hybrid search — for now just a SQL LIKE scan over (name, slug, description)
+ * filtered to `visibility IN ('public', 'unlisted')`. When a Vectorize
+ * binding is available the endpoint can optionally re-rank with bge-base
+ * embeddings (kept out of the hot path so absence of the binding doesn't
+ * degrade the UX — ADR-006 free-tier first).
+ *
+ * Unauthenticated on purpose: discovery is a pre-login experience.
+ */
+export async function handleSearchAgents(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const url = new URL(c.req.url);
+  const q = (url.searchParams.get("q") ?? "").trim();
+  const category = (url.searchParams.get("category") ?? "").trim();
+  if (!q) return c.json({ error: "q is required" }, 400);
+
+  // SQLite LIKE is case-insensitive for ASCII. We wrap with % to make it a
+  // substring search. 3 LIKE clauses (name, slug, description) joined OR.
+  const like = `%${q.replace(/%/g, "")}%`;
+  const binds: Array<string> = [like, like, like];
+  let sql = `
+    SELECT a.id, a.slug, a.name, a.description, a.category, a.updated_at,
+           u.handle AS handle, u.avatar_url AS avatar_url
+      FROM agents a
+      JOIN users u ON u.id = a.creator_user_id
+     WHERE a.visibility IN ('public', 'unlisted')
+       AND (a.name LIKE ? OR a.slug LIKE ? OR a.description LIKE ?)
+  `;
+  if (category) {
+    sql += " AND a.category = ?";
+    binds.push(category);
+  }
+  sql += " ORDER BY a.updated_at DESC LIMIT 30";
+
+  const rows = await db
+    .prepare(sql)
+    .bind(...binds)
+    .all<{
+      id: string;
+      slug: string;
+      name: string;
+      description: string | null;
+      category: string | null;
+      updated_at: number;
+      handle: string;
+      avatar_url: string | null;
+    }>();
+
+  return c.json({ q, category: category || null, agents: rows.results ?? [] });
+}
+
+/** GET /api/agents/:id/subscribe — is the current user subscribed? */
+export async function handleIsSubscribed(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+  const row = await db
+    .prepare("SELECT 1 FROM subscriptions WHERE user_id = ? AND agent_id = ?")
+    .bind(session.sub, id)
+    .first();
+  return c.json({ subscribed: Boolean(row), agent_id: id });
+}
+
+/**
+ * Public JSON Feed (https://www.jsonfeed.org/version/1.1/). Paginates
+ * `agent_outputs` for a given @handle/slug in reverse-chronological order.
+ * Served with `application/feed+json` so feed readers recognise it; a
+ * short cache-control is fine because agents rarely publish more than once
+ * a minute.
+ */
+export async function handlePublicFeed(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const handle = c.req.param("handle");
+  const slug = c.req.param("slug");
+  if (!handle || !slug) return c.json({ error: "handle and slug required" }, 400);
+
+  const user = await db
+    .prepare("SELECT id, handle, name, avatar_url FROM users WHERE handle = ?")
+    .bind(handle)
+    .first<{ id: string; handle: string; name: string | null; avatar_url: string | null }>();
+  if (!user) return c.json({ error: "not found" }, 404);
+
+  const agent = await db
+    .prepare(
+      `SELECT id, slug, name, description
+         FROM agents
+        WHERE creator_user_id = ? AND slug = ?
+          AND visibility IN ('public', 'unlisted')`,
+    )
+    .bind(user.id, slug)
+    .first<{ id: string; slug: string; name: string; description: string | null }>();
+  if (!agent) return c.json({ error: "not found" }, 404);
+
+  const rows = await db
+    .prepare(
+      `SELECT id, agent_id, agent_version_id, run_id, output_json, published_at
+         FROM agent_outputs
+        WHERE agent_id = ?
+        ORDER BY published_at DESC
+        LIMIT 50`,
+    )
+    .bind(agent.id)
+    .all<AgentOutputRow>();
+
+  const url = new URL(c.req.url);
+  const origin = `${url.protocol}//${url.host}`;
+  const homePageUrl = `${origin}/@${user.handle}/${agent.slug}`;
+  const feedUrl = `${origin}/@${user.handle}/${agent.slug}/feed.json`;
+
+  const items = (rows.results ?? []).map((row) => {
+    const parsed = safeParse(row.output_json);
+    const summary = extractSummary(parsed);
+    return {
+      id: row.id,
+      url: `${origin}/tools/${agent.id}/runs/${row.run_id}`,
+      date_published: new Date(row.published_at).toISOString(),
+      content_text: summary,
+    };
+  });
+
+  const body = {
+    version: "https://jsonfeed.org/version/1.1",
+    title: `${agent.name} · @${user.handle}`,
+    description: agent.description ?? undefined,
+    home_page_url: homePageUrl,
+    feed_url: feedUrl,
+    authors:
+      user.name || user.handle
+        ? [{ name: user.name ?? user.handle, url: `${origin}/@${user.handle}` }]
+        : undefined,
+    items,
+  };
+
+  return new Response(JSON.stringify(body, null, 2), {
+    status: 200,
+    headers: {
+      "content-type": "application/feed+json; charset=utf-8",
+      "cache-control": "public, max-age=60, s-maxage=60",
+    },
+  });
+}
+
+function safeParse(json: string): unknown {
+  try {
+    return JSON.parse(json);
+  } catch {
+    return json;
+  }
+}
+
+function extractSummary(parsed: unknown): string {
+  if (typeof parsed === "string") return parsed;
+  if (parsed && typeof parsed === "object") {
+    const record = parsed as Record<string, unknown>;
+    for (const key of ["summary", "output", "text", "content", "message"]) {
+      const v = record[key];
+      if (typeof v === "string" && v.trim()) return v;
+    }
+    // Fall back to a compact JSON dump, capped.
+    const dump = JSON.stringify(parsed);
+    return dump.length > 400 ? `${dump.slice(0, 400)}…` : dump;
+  }
+  return String(parsed ?? "");
+}
+
 /**
  * Unauthenticated lookup by @handle/slug. Only exposes agents whose
  * visibility is public or unlisted. Returns the creator's handle + name

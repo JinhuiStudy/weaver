@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LogIn,
   Play,
+  Rss,
   Settings,
   Sparkles,
   Workflow,
@@ -282,6 +283,56 @@ export default function HelpRoute() {
           {
             label: "Private agent",
             body: "visibility=private 이면 공개 URL 로 접근 불가 (404). 본인만 빌더에서 엶.",
+          },
+        ]}
+      />
+
+      <PageGuide
+        id="search"
+        icon={<Compass className="lu" />}
+        kicker="/search"
+        title="검색 · Discover"
+        bullets={[
+          {
+            label: "쿼리",
+            body: "?q=news · ?q=HN — name · slug · description 에 substring LIKE 매칭. 3글자 이상 권장.",
+          },
+          {
+            label: "카테고리 필터",
+            body: "productivity · news · research · coding · creative · fun · etc 중 하나 지정.",
+          },
+          {
+            label: "결과 카드",
+            body: "클릭 시 @handle/slug 공개 프로필로 이동 → 거기서 Fork / Subscribe.",
+          },
+          {
+            label: "private 숨김",
+            body: "visibility=private 은 검색에 뜨지 않음. unlisted 는 URL 알아야 보이되 검색에는 노출.",
+          },
+        ]}
+      />
+
+      <PageGuide
+        id="my-feed"
+        icon={<Rss className="lu" />}
+        kicker="/me/feed"
+        title="구독 피드"
+        bullets={[
+          {
+            label: "집계",
+            body: "구독한 agent 들의 최근 100 output 을 시간 역순으로.",
+          },
+          {
+            label: "item 구조",
+            body: "agent handle/slug · content text · 발행 시간 · run trace 링크.",
+          },
+          {
+            label: "구독 방법",
+            body: "공개 agent 페이지의 구독 버튼 · 재클릭으로 해제 (토글).",
+          },
+          {
+            label: "JSON Feed",
+            body: "agent 페이지마다 /feed.json. RSS 리더에 JSON Feed 1.1 로 등록 가능.",
           },
         ]}
       />
@@ -658,6 +709,8 @@ const TOC = [
   { id: "login", title: "로그인" },
   { id: "builder", title: "빌더 (캔버스)" },
   { id: "public-agent", title: "공개 agent 프로필" },
+  { id: "search", title: "검색 · Discover" },
+  { id: "my-feed", title: "구독 피드" },
   { id: "run-viewer", title: "Run Viewer (trace)" },
   { id: "design-system", title: "Design System" },
   { id: "shortcuts", title: "키보드 단축키" },

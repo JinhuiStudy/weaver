@@ -7,6 +7,8 @@ export default [
   route("login", "routes/login.tsx"),
   route("builder/:id", "routes/builder.$id.tsx"),
   route("tools/:toolId/runs/:runId", "routes/tools.$toolId.runs.$runId.tsx"),
+  route("me/feed", "routes/me.feed.tsx"),
+  route("search", "routes/search.tsx"),
   // Public agent profile. RR7's flat-routes typegen doesn't play well with
   // a literal `@` prefix on a dynamic segment, so we use a plain 2-segment
   // catch-all and enforce the `@` in the loader — URL still reads as

@@ -1,4 +1,15 @@
-import { Activity, ArrowRight, BookOpen, GitFork, Github, Sparkles, Star, Zap } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  BookOpen,
+  GitFork,
+  Github,
+  Rss,
+  Search as SearchIcon,
+  Sparkles,
+  Star,
+  Zap,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useLoaderData } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
@@ -161,6 +172,29 @@ export default function Home() {
             변형해 <b className="text-text-primary">evolve</b> 시킵니다. 유저 $0 · 운영 $0.
           </p>
 
+          <form
+            method="GET"
+            action="/search"
+            className="fade-up fade-up-2 mt-8 flex max-w-xl items-center gap-2"
+            data-testid="home-search-form"
+          >
+            <div className="field-wrap flex-1">
+              <span className="ico">
+                <SearchIcon className="lu" />
+              </span>
+              <input
+                name="q"
+                type="search"
+                placeholder="공개 agent 검색 — news summary · HN · CSS…"
+                className="inp has-ico inp-lg"
+                data-testid="home-search-input"
+              />
+            </div>
+            <button type="submit" className="btn btn-outlined btn-lg">
+              검색
+            </button>
+          </form>
+
           <div className="fade-up fade-up-3 mt-10 flex flex-wrap items-center gap-3">
             <Link
               to="/builder/demo"
@@ -213,6 +247,7 @@ export default function Home() {
       {session ? (
         <>
           <MyAgentsSection agents={agents} />
+          <FeedLinkStrip />
           <RecentRunsSection runs={runs} />
         </>
       ) : null}
@@ -292,6 +327,34 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  );
+}
+
+function FeedLinkStrip() {
+  return (
+    <section className="px-8 pt-2 pb-4 md:px-16" data-testid="feed-link-strip">
+      <div className="mx-auto max-w-5xl">
+        <Link
+          to="/me/feed"
+          className="group flex items-center justify-between gap-4 rounded-[10px] border border-border bg-surface-1/60 px-5 py-3 backdrop-blur transition hover:border-weaver-indigo hover:bg-weaver-indigo/5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-weaver-indigo/40 bg-weaver-indigo/10 text-weaver-indigo">
+              <Rss className="lu" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold tracking-tight">내 구독 피드</div>
+              <div className="text-xs text-text-tertiary">
+                내가 구독한 agent 의 최근 output 을 한 눈에
+              </div>
+            </div>
+          </div>
+          <span className="font-mono text-xs text-text-tertiary group-hover:text-weaver-cyan">
+            /me/feed →
+          </span>
+        </Link>
+      </div>
+    </section>
   );
 }
 

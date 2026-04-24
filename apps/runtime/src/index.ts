@@ -12,7 +12,12 @@ import {
   handleForkAgent,
   handleGetAgent,
   handleGetPublicAgent,
+  handleIsSubscribed,
   handleListAgents,
+  handleMyFeed,
+  handlePublicFeed,
+  handleSearchAgents,
+  handleToggleSubscribe,
   handleUpdateAgent,
 } from "./api/agents";
 import { handleGetRun, handleListMyRuns } from "./api/runs";
@@ -70,9 +75,14 @@ app.get("/api/agents/:id", requireAuth(), handleGetAgent);
 app.patch("/api/agents/:id", requireAuth(), handleUpdateAgent);
 app.post("/api/agents/:id/versions", requireAuth(), handleCreateVersion);
 app.post("/api/agents/:id/fork", requireAuth(), handleForkAgent);
+app.post("/api/agents/:id/subscribe", requireAuth(), handleToggleSubscribe);
+app.get("/api/agents/:id/subscribe", requireAuth(), handleIsSubscribed);
 
 // Unauthenticated — public profile page.
+// Search comes BEFORE :handle/:slug so "/search" isn't mis-parsed as a handle.
+app.get("/api/public/agents/search", handleSearchAgents);
 app.get("/api/public/agents/:handle/:slug", handleGetPublicAgent);
+app.get("/api/public/agents/:handle/:slug/feed.json", handlePublicFeed);
 
 app.get("/api/me", requireAuth(), async (c) => {
   const session = c.get("session");
@@ -256,6 +266,9 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
 app.get("/api/runs", requireAuth(), handleListMyRuns);
 app.get("/api/runs/:id", requireAuth(), handleGetRun);
 
+// Sprint 3 D3: subscribed agents' aggregated timeline.
+app.get("/api/me/feed", requireAuth(), handleMyFeed);
+
 /**
  * Cron body — extracted so we can call it both from `scheduled()` (Cloudflare
  * trigger) and from tests (SELF.scheduled()).
@@ -369,6 +382,19 @@ async function tickOnce(env: Env, db: D1Database, now: number): Promise<void> {
           next.id,
         )
         .run();
+
+      // Sprint 3 D1: materialise into agent_outputs when a run transitions
+      // into `complete`. Only public/unlisted agents (tool_id points at a
+      // saved agent row) get feed entries; private runs stay in run_history.
+      if (next.status === "complete" && prev.status !== "complete") {
+        await maybeMaterialiseOutput({
+          db,
+          toolId: prev.tool_id,
+          runId: prev.id,
+          state: next.state,
+          completedAt: next.updated_at,
+        });
+      }
     }
   }
 
@@ -376,6 +402,62 @@ async function tickOnce(env: Env, db: D1Database, now: number): Promise<void> {
   // just drains when AXIOM_TOKEN isn't set, so this is always safe.
   const exporter = newExporter(env);
   await exporter.flush(tracer);
+}
+
+/**
+ * Write an `agent_outputs` row when a run linked to a *public* (or unlisted)
+ * agent reaches `complete`. The run's `tool_id` must match an existing agent
+ * id AND its `agent_version_id` must be set. Private agents skip this path.
+ * Idempotent via the unique index on `agent_outputs.run_id`.
+ */
+async function maybeMaterialiseOutput({
+  db,
+  toolId,
+  runId,
+  state,
+  completedAt,
+}: {
+  db: D1Database;
+  toolId: string;
+  runId: string;
+  state: Record<string, unknown>;
+  completedAt: number | null;
+}): Promise<void> {
+  const agent = await db
+    .prepare("SELECT id, visibility FROM agents WHERE id = ?")
+    .bind(toolId)
+    .first<{ id: string; visibility: string }>();
+  if (!agent) return;
+  if (agent.visibility === "private") return;
+
+  const runRow = await db
+    .prepare("SELECT agent_version_id FROM agent_runs WHERE id = ?")
+    .bind(runId)
+    .first<{ agent_version_id: string | null }>();
+  const versionId = runRow?.agent_version_id;
+  if (!versionId) return;
+
+  const existing = await db
+    .prepare("SELECT id FROM agent_outputs WHERE run_id = ?")
+    .bind(runId)
+    .first();
+  if (existing) return;
+
+  await db
+    .prepare(
+      `INSERT INTO agent_outputs
+         (id, agent_id, agent_version_id, run_id, output_json, published_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .bind(
+      genId(),
+      agent.id,
+      versionId,
+      runId,
+      JSON.stringify(state ?? {}),
+      completedAt ?? Date.now(),
+    )
+    .run();
 }
 
 function lookupNodeType(graph: { nodes: StepNode[] }, nodeId: string | null): string {
