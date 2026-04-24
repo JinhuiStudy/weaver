@@ -9,6 +9,9 @@ export default [
   route("tools/:toolId/runs/:runId", "routes/tools.$toolId.runs.$runId.tsx"),
   route("me/feed", "routes/me.feed.tsx"),
   route("search", "routes/search.tsx"),
+  // Genealogy tree for a specific public agent. Must be registered BEFORE
+  // the two-segment `:prefixedHandle/:slug` catch-all below.
+  route(":prefixedHandle/:slug/genealogy", "routes/handle-agent.genealogy.tsx"),
   // Public agent profile. RR7's flat-routes typegen doesn't play well with
   // a literal `@` prefix on a dynamic segment, so we use a plain 2-segment
   // catch-all and enforce the `@` in the loader — URL still reads as

@@ -502,6 +502,244 @@ export async function handleForkAgent(c: Context): Promise<Response> {
   });
 }
 
+/**
+ * POST /api/runs/:id/feedback — record a 👍/👎 + optional comment.
+ *
+ * Auth required. The run must belong to a public/unlisted agent (private
+ * runs can't receive public feedback — 404 keeps us from leaking their
+ * existence). UPSERT pattern so a user can flip their vote later.
+ */
+export async function handleSubmitFeedback(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const runId = c.req.param("id");
+  if (!runId) return c.json({ error: "run id is required" }, 400);
+
+  let body: { rating?: unknown; comment?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid JSON body" }, 400);
+  }
+  const rating = body.rating;
+  if (rating !== 1 && rating !== -1) {
+    return c.json({ error: "rating must be 1 or -1" }, 400);
+  }
+  let comment: string | null = null;
+  if (body.comment !== undefined && body.comment !== null) {
+    if (typeof body.comment !== "string") {
+      return c.json({ error: "comment must be a string" }, 400);
+    }
+    const trimmed = body.comment.trim();
+    if (trimmed.length > 280) {
+      return c.json({ error: "comment must be ≤ 280 chars" }, 400);
+    }
+    comment = trimmed || null;
+  }
+
+  // Resolve the agent + visibility via the run row.
+  const row = await db
+    .prepare(
+      `SELECT r.id AS run_id, r.tool_id AS agent_id, a.visibility AS visibility
+         FROM agent_runs r
+         JOIN agents a ON a.id = r.tool_id
+        WHERE r.id = ?`,
+    )
+    .bind(runId)
+    .first<{ run_id: string; agent_id: string; visibility: string }>();
+  if (!row || row.visibility === "private") {
+    return c.json({ error: "not found" }, 404);
+  }
+
+  const now = Date.now();
+  await db
+    .prepare(
+      `INSERT INTO agent_feedback (run_id, user_id, agent_id, rating, comment, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(run_id, user_id)
+       DO UPDATE SET rating = excluded.rating,
+                     comment = excluded.comment,
+                     created_at = excluded.created_at`,
+    )
+    .bind(row.run_id, session.sub, row.agent_id, rating, comment, now)
+    .run();
+
+  return c.json({
+    run_id: row.run_id,
+    agent_id: row.agent_id,
+    rating,
+    comment,
+    created_at: now,
+  });
+}
+
+/**
+ * GET /api/public/agents/:h/:s/stats — aggregate fitness signal for a public
+ * agent card. Returns likes/dislikes/ratio (null if no votes), fork count,
+ * subscriber count. One query per metric keeps D1 planning simple.
+ */
+export async function handlePublicStats(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const handle = c.req.param("handle");
+  const slug = c.req.param("slug");
+  if (!handle || !slug) return c.json({ error: "handle and slug required" }, 400);
+
+  const agent = await db
+    .prepare(
+      `SELECT a.id
+         FROM agents a
+         JOIN users u ON u.id = a.creator_user_id
+        WHERE u.handle = ? AND a.slug = ?
+          AND a.visibility IN ('public', 'unlisted')`,
+    )
+    .bind(handle, slug)
+    .first<{ id: string }>();
+  if (!agent) return c.json({ error: "not found" }, 404);
+
+  const feedback = await db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END)  AS likes,
+         SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) AS dislikes
+       FROM agent_feedback WHERE agent_id = ?`,
+    )
+    .bind(agent.id)
+    .first<{ likes: number | null; dislikes: number | null }>();
+  const likes = feedback?.likes ?? 0;
+  const dislikes = feedback?.dislikes ?? 0;
+  const total = likes + dislikes;
+  const ratio = total > 0 ? likes / total : null;
+
+  const forks = await db
+    .prepare("SELECT COUNT(*) AS c FROM agents WHERE fork_of_agent_id = ?")
+    .bind(agent.id)
+    .first<{ c: number }>();
+  const subs = await db
+    .prepare("SELECT COUNT(*) AS c FROM subscriptions WHERE agent_id = ?")
+    .bind(agent.id)
+    .first<{ c: number }>();
+
+  return c.json({
+    agent_id: agent.id,
+    likes,
+    dislikes,
+    ratio,
+    fork_count: forks?.c ?? 0,
+    subscriber_count: subs?.c ?? 0,
+  });
+}
+
+type GenealogyNode = {
+  id: string;
+  handle: string;
+  slug: string;
+  name: string;
+  depth: number;
+  fork_of_agent_id: string | null;
+};
+
+/**
+ * GET /api/public/agents/:h/:s/genealogy — walks up the fork chain
+ * (ancestors, depth=1..3) and down (direct + grand-children, depth=1..3)
+ * and returns them as flat arrays keyed by depth. The UI renders this as
+ * a vertical tree centred on `current`.
+ */
+export async function handlePublicGenealogy(c: Context): Promise<Response> {
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const handle = c.req.param("handle");
+  const slug = c.req.param("slug");
+  if (!handle || !slug) return c.json({ error: "handle and slug required" }, 400);
+
+  const current = await db
+    .prepare(
+      `SELECT a.id AS id, a.slug AS slug, a.name AS name,
+              a.fork_of_agent_id AS fork_of_agent_id, u.handle AS handle
+         FROM agents a
+         JOIN users u ON u.id = a.creator_user_id
+        WHERE u.handle = ? AND a.slug = ?
+          AND a.visibility IN ('public', 'unlisted')`,
+    )
+    .bind(handle, slug)
+    .first<{
+      id: string;
+      slug: string;
+      name: string;
+      fork_of_agent_id: string | null;
+      handle: string;
+    }>();
+  if (!current) return c.json({ error: "not found" }, 404);
+
+  const maxDepth = 3;
+  const ancestors: GenealogyNode[] = [];
+  let parentId: string | null = current.fork_of_agent_id;
+  for (let depth = 1; depth <= maxDepth && parentId; depth++) {
+    const row = await db
+      .prepare(
+        `SELECT a.id AS id, a.slug AS slug, a.name AS name,
+                a.fork_of_agent_id AS fork_of_agent_id, u.handle AS handle
+           FROM agents a
+           JOIN users u ON u.id = a.creator_user_id
+          WHERE a.id = ? AND a.visibility IN ('public', 'unlisted')`,
+      )
+      .bind(parentId)
+      .first<{
+        id: string;
+        slug: string;
+        name: string;
+        fork_of_agent_id: string | null;
+        handle: string;
+      }>();
+    if (!row) break;
+    ancestors.push({ ...row, depth });
+    parentId = row.fork_of_agent_id;
+  }
+
+  const descendants: GenealogyNode[] = [];
+  let frontier: string[] = [current.id];
+  for (let depth = 1; depth <= maxDepth && frontier.length > 0; depth++) {
+    const placeholders = frontier.map(() => "?").join(",");
+    const rows = await db
+      .prepare(
+        `SELECT a.id AS id, a.slug AS slug, a.name AS name,
+                a.fork_of_agent_id AS fork_of_agent_id, u.handle AS handle
+           FROM agents a
+           JOIN users u ON u.id = a.creator_user_id
+          WHERE a.fork_of_agent_id IN (${placeholders})
+            AND a.visibility IN ('public', 'unlisted')
+          ORDER BY a.created_at ASC`,
+      )
+      .bind(...frontier)
+      .all<{
+        id: string;
+        slug: string;
+        name: string;
+        fork_of_agent_id: string | null;
+        handle: string;
+      }>();
+    const list = rows.results ?? [];
+    for (const row of list) descendants.push({ ...row, depth });
+    frontier = list.map((r) => r.id);
+  }
+
+  return c.json({
+    current: {
+      id: current.id,
+      handle: current.handle,
+      slug: current.slug,
+      name: current.name,
+    },
+    ancestors,
+    descendants,
+  });
+}
+
 type AgentOutputRow = {
   id: string;
   agent_id: string;

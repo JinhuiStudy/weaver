@@ -11,6 +11,7 @@ import migration0001 from "../../migrations/0001_agent_runs.sql?raw";
 import migration0003 from "../../migrations/0003_auth.sql?raw";
 import migration0004 from "../../migrations/0004_agents.sql?raw";
 import migration0005 from "../../migrations/0005_feed.sql?raw";
+import migration0006 from "../../migrations/0006_feedback_genealogy.sql?raw";
 
 /**
  * Apply the 0001 migration once per test run. Miniflare's `d1Persist: false`
@@ -48,7 +49,13 @@ function stripInlineComment(line: string): string {
 }
 
 beforeAll(async () => {
-  for (const migration of [migration0001, migration0003, migration0004, migration0005]) {
+  for (const migration of [
+    migration0001,
+    migration0003,
+    migration0004,
+    migration0005,
+    migration0006,
+  ]) {
     for (const stmt of splitSqlStatements(migration)) {
       await env.DB.prepare(stmt).run();
     }

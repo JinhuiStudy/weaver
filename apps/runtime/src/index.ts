@@ -16,7 +16,10 @@ import {
   handleListAgents,
   handleMyFeed,
   handlePublicFeed,
+  handlePublicGenealogy,
+  handlePublicStats,
   handleSearchAgents,
+  handleSubmitFeedback,
   handleToggleSubscribe,
   handleUpdateAgent,
 } from "./api/agents";
@@ -83,6 +86,8 @@ app.get("/api/agents/:id/subscribe", requireAuth(), handleIsSubscribed);
 app.get("/api/public/agents/search", handleSearchAgents);
 app.get("/api/public/agents/:handle/:slug", handleGetPublicAgent);
 app.get("/api/public/agents/:handle/:slug/feed.json", handlePublicFeed);
+app.get("/api/public/agents/:handle/:slug/stats", handlePublicStats);
+app.get("/api/public/agents/:handle/:slug/genealogy", handlePublicGenealogy);
 
 app.get("/api/me", requireAuth(), async (c) => {
   const session = c.get("session");
@@ -265,6 +270,8 @@ app.post("/api/runs", requireAuth(), requireRateLimit("runs", RUNS_DAILY_CAP), a
 // Sprint 2 D5: Run viewer backing data.
 app.get("/api/runs", requireAuth(), handleListMyRuns);
 app.get("/api/runs/:id", requireAuth(), handleGetRun);
+// Sprint 4 D1: per-run feedback.
+app.post("/api/runs/:id/feedback", requireAuth(), handleSubmitFeedback);
 
 // Sprint 3 D3: subscribed agents' aggregated timeline.
 app.get("/api/me/feed", requireAuth(), handleMyFeed);

@@ -1,4 +1,13 @@
-import { ArrowLeft, BookOpen, Clock, DollarSign, Zap } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  Clock,
+  DollarSign,
+  Loader2,
+  ThumbsDown,
+  ThumbsUp,
+  Zap,
+} from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData } from "react-router";
 import { Badge } from "~/components/ui";
@@ -140,6 +149,9 @@ function devMockRun(toolId: string, runId: string): RunDetail {
 export default function TraceRoute({ params }: Route.ComponentProps) {
   const { detail, error } = useLoaderData<typeof loader>();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [ratingBusy, setRatingBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const history = detail?.history ?? [];
   const selected = selectedIndex !== null ? history[selectedIndex] : null;
 
@@ -148,6 +160,33 @@ export default function TraceRoute({ params }: Route.ComponentProps) {
     : null;
   const stepCount = history.length;
   const totalNeurons = history.reduce((sum, h) => sum + (h.cost_usd_micro ?? 0), 0);
+
+  const canRate = detail?.run.status === "complete";
+
+  async function submitRating(value: 1 | -1) {
+    if (!detail) return;
+    setRatingBusy(true);
+    try {
+      const res = await fetch(`/api/runs/${detail.run.id}/feedback`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rating: value }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setRating(value);
+      setToast(value === 1 ? "👍 피드백 기록됨" : "👎 피드백 기록됨");
+      window.setTimeout(() => setToast(null), 2500);
+    } catch (err) {
+      setToast(`피드백 실패: ${err instanceof Error ? err.message : String(err)}`);
+      window.setTimeout(() => setToast(null), 3500);
+    } finally {
+      setRatingBusy(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-bg-base text-text-primary">
@@ -169,6 +208,51 @@ export default function TraceRoute({ params }: Route.ComponentProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {canRate ? (
+            <div
+              className="flex items-center gap-1 rounded-full border border-border bg-surface-1 p-0.5"
+              data-testid="rating-group"
+            >
+              <button
+                type="button"
+                onClick={() => submitRating(1)}
+                disabled={ratingBusy}
+                aria-pressed={rating === 1}
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition ${
+                  rating === 1
+                    ? "bg-emerald-500/20 text-emerald-300"
+                    : "text-text-tertiary hover:text-text-primary"
+                }`}
+                data-testid="rating-up"
+              >
+                {ratingBusy && rating !== -1 ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ThumbsUp className="h-3 w-3" />
+                )}
+                좋아요
+              </button>
+              <button
+                type="button"
+                onClick={() => submitRating(-1)}
+                disabled={ratingBusy}
+                aria-pressed={rating === -1}
+                className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition ${
+                  rating === -1
+                    ? "bg-rose-500/20 text-rose-300"
+                    : "text-text-tertiary hover:text-text-primary"
+                }`}
+                data-testid="rating-down"
+              >
+                {ratingBusy && rating !== 1 ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ThumbsDown className="h-3 w-3" />
+                )}
+                아쉬움
+              </button>
+            </div>
+          ) : null}
           <Link
             to="/help#run-viewer"
             className="btn btn-ghost btn-sm"
@@ -188,6 +272,16 @@ export default function TraceRoute({ params }: Route.ComponentProps) {
           </div>
         </div>
       </header>
+
+      {toast ? (
+        <div
+          role="status"
+          className="pointer-events-none fixed top-14 left-1/2 z-20 -translate-x-1/2 rounded-full border border-weaver-indigo/40 bg-surface-1/90 px-4 py-2 text-xs text-text-primary shadow-[0_4px_12px_rgba(0,0,0,0.5)] backdrop-blur"
+          data-testid="rating-toast"
+        >
+          {toast}
+        </div>
+      ) : null}
 
       {error ? (
         <section className="px-8 py-8">

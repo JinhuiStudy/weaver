@@ -1,9 +1,9 @@
-import { BellPlus, BellRing, BookOpen, GitFork, Rss } from "lucide-react";
+import { BellPlus, BellRing, BookOpen, GitFork, Network, Rss, ThumbsUp, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
 import { Badge, Button } from "~/components/ui";
-import { callRuntime, loadSessionServer } from "~/lib/session.server";
+import { callRuntime, isDev, loadSessionServer } from "~/lib/session.server";
 import type { Route } from "./+types/handle-agent";
 
 type PublicAgent = {
@@ -48,13 +48,31 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
   }
   const handle = prefixedHandle.slice(1);
   const res = await callRuntime(env, `/api/public/agents/${handle}/${slug}`, request);
-  if (res.status === 404) {
+  let data: PublicAgent;
+  if (res.ok) {
+    data = (await res.json()) as PublicAgent;
+  } else if (isDev(env)) {
+    // Dev: runtime offline — mint a deterministic mock so the page renders.
+    data = {
+      agent: {
+        id: `dev-agent-${slug}`,
+        slug,
+        name: slug.replace(/-/g, " "),
+        description: "Dev mock agent — 실제 runtime 이 없을 때 보여집니다.",
+        visibility: "public",
+        category: "news",
+        fork_of_agent_id: null,
+        created_at: Date.now() - 86_400_000,
+        updated_at: Date.now() - 3_600_000,
+      },
+      creator: { handle, name: handle, avatar_url: null },
+      definition: { nodes: [], edges: [] },
+    };
+  } else if (res.status === 404) {
     throw new Response("agent not found", { status: 404 });
-  }
-  if (!res.ok) {
+  } else {
     throw new Response("failed to load agent", { status: 502 });
   }
-  const data = (await res.json()) as PublicAgent;
 
   // If the visitor is logged in, check their subscription status so the
   // Subscribe button can render the correct state server-side.
@@ -69,7 +87,25 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
     }
   }
 
-  return { ...data, subscribed, loggedIn: Boolean(session), handle, slug };
+  // Fetch aggregate stats (likes / forks / subs). Dev fallback mirrors
+  // the shape so the page always has something to render.
+  let stats: {
+    likes: number;
+    dislikes: number;
+    ratio: number | null;
+    fork_count: number;
+    subscriber_count: number;
+  } = { likes: 0, dislikes: 0, ratio: null, fork_count: 0, subscriber_count: 0 };
+  const statsRes = await callRuntime(env, `/api/public/agents/${handle}/${slug}/stats`, request);
+  if (statsRes.ok) {
+    try {
+      stats = await statsRes.json();
+    } catch {}
+  } else if (isDev(env)) {
+    stats = { likes: 42, dislikes: 6, ratio: 42 / 48, fork_count: 9, subscriber_count: 15 };
+  }
+
+  return { ...data, subscribed, stats, loggedIn: Boolean(session), handle, slug };
 }
 
 export default function HandleAgentRoute() {
@@ -161,13 +197,43 @@ export default function HandleAgentRoute() {
             </p>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap items-center gap-2">
+          <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="agent-badges">
             <Badge tone={agent.visibility === "public" ? "ok" : "info"}>{agent.visibility}</Badge>
             {agent.category ? <Badge tone="muted">{agent.category}</Badge> : null}
             {agent.fork_of_agent_id ? (
               <Badge tone="info" className="inline-flex items-center gap-1">
                 <GitFork className="h-3 w-3" />
                 forked
+              </Badge>
+            ) : null}
+            {data.stats.ratio !== null ? (
+              <Badge
+                tone={data.stats.ratio >= 0.7 ? "ok" : data.stats.ratio >= 0.4 ? "info" : "warn"}
+                className="inline-flex items-center gap-1"
+                data-testid="stat-likes"
+              >
+                <ThumbsUp className="h-3 w-3" />
+                {Math.round(data.stats.ratio * 100)}% · {data.stats.likes + data.stats.dislikes}표
+              </Badge>
+            ) : null}
+            {data.stats.fork_count > 0 ? (
+              <Badge
+                tone="muted"
+                className="inline-flex items-center gap-1"
+                data-testid="stat-forks"
+              >
+                <GitFork className="h-3 w-3" />
+                {data.stats.fork_count} forks
+              </Badge>
+            ) : null}
+            {data.stats.subscriber_count > 0 ? (
+              <Badge
+                tone="muted"
+                className="inline-flex items-center gap-1"
+                data-testid="stat-subs"
+              >
+                <Users className="h-3 w-3" />
+                {data.stats.subscriber_count}
               </Badge>
             ) : null}
           </div>
@@ -193,6 +259,14 @@ export default function HandleAgentRoute() {
             >
               {subscribed ? "구독 중" : "구독"}
             </Button>
+            <Link
+              to={`/@${handle}/${slug}/genealogy`}
+              className="btn btn-ghost inline-flex items-center gap-1.5"
+              data-testid="genealogy-link"
+            >
+              <Network className="lu" />
+              Genealogy
+            </Link>
             <a
               href={`/api/public/agents/${handle}/${slug}/feed.json`}
               className="btn btn-ghost inline-flex items-center gap-1.5"
