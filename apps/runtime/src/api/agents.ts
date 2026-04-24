@@ -25,6 +25,35 @@ type AgentRow = {
   updated_at: number;
 };
 
+/**
+ * Keyword-based first-pass moderation. Production augments this with a Workers
+ * AI classifier (Sprint 9+), but even the keyword gate alone keeps the bulk
+ * of obvious abuse out of the public feed at zero cost.
+ *
+ * Conservative: only matches whole-word hits on a short, high-signal list so
+ * benign mentions don't get flagged. An admin can always un-hide from the
+ * moderation dashboard.
+ */
+const MODERATION_BLOCKLIST: readonly string[] = Object.freeze([
+  "phishing",
+  "malware",
+  "ransomware",
+  "cp",
+  "csam",
+  "nsfw",
+  "bomb",
+  "exploit kit",
+]);
+
+export function screenForModeration(text: string): boolean {
+  const lower = text.toLowerCase();
+  return MODERATION_BLOCKLIST.some((term) => {
+    // Use word boundaries so "noCPU" doesn't match "cp".
+    const re = new RegExp(`\\b${term.replace(/ /g, "\\s+")}\\b`, "i");
+    return re.test(lower);
+  });
+}
+
 async function sha256Hex(text: string): Promise<string> {
   const bytes = new TextEncoder().encode(text);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -106,13 +135,20 @@ export async function handleCreateAgent(c: Context): Promise<Response> {
   const definitionJson = JSON.stringify(definition);
   const promptHash = await sha256Hex(definitionJson);
 
+  // Sprint 9: first-pass moderation on name + description. If either trips
+  // the blocklist, the agent is created with `moderation_hidden = 1` so it
+  // can't land in public feeds / search until an admin reviews. The creator
+  // still sees it in their workspace so they can edit-and-appeal.
+  const descriptionText = typeof body.description === "string" ? body.description : "";
+  const moderationHidden = screenForModeration(`${name}\n${descriptionText}`) ? 1 : 0;
+
   await db.batch([
     db
       .prepare(
         `INSERT INTO agents
            (id, slug, creator_user_id, name, description, visibility, category,
-            current_version_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            current_version_id, moderation_hidden, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         agentId,
@@ -123,6 +159,7 @@ export async function handleCreateAgent(c: Context): Promise<Response> {
         visibility,
         typeof body.category === "string" ? body.category : null,
         versionId,
+        moderationHidden,
         now,
         now,
       ),
@@ -595,7 +632,7 @@ export async function handlePublicStats(c: Context): Promise<Response> {
          FROM agents a
          JOIN users u ON u.id = a.creator_user_id
         WHERE u.handle = ? AND a.slug = ?
-          AND a.visibility IN ('public', 'unlisted')`,
+          AND a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0`,
     )
     .bind(handle, slug)
     .first<{ id: string }>();
@@ -664,7 +701,7 @@ export async function handlePublicGenealogy(c: Context): Promise<Response> {
          FROM agents a
          JOIN users u ON u.id = a.creator_user_id
         WHERE u.handle = ? AND a.slug = ?
-          AND a.visibility IN ('public', 'unlisted')`,
+          AND a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0`,
     )
     .bind(handle, slug)
     .first<{
@@ -686,7 +723,7 @@ export async function handlePublicGenealogy(c: Context): Promise<Response> {
                 a.fork_of_agent_id AS fork_of_agent_id, u.handle AS handle
            FROM agents a
            JOIN users u ON u.id = a.creator_user_id
-          WHERE a.id = ? AND a.visibility IN ('public', 'unlisted')`,
+          WHERE a.id = ? AND a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0`,
       )
       .bind(parentId)
       .first<{
@@ -712,7 +749,7 @@ export async function handlePublicGenealogy(c: Context): Promise<Response> {
            FROM agents a
            JOIN users u ON u.id = a.creator_user_id
           WHERE a.fork_of_agent_id IN (${placeholders})
-            AND a.visibility IN ('public', 'unlisted')
+            AND a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0
           ORDER BY a.created_at ASC`,
       )
       .bind(...frontier)
@@ -891,7 +928,7 @@ export async function handleTrendingAgents(c: Context): Promise<Response> {
       LEFT JOIN (SELECT agent_id, COUNT(*) AS n FROM subscriptions GROUP BY agent_id)                     s ON s.agent_id = a.id
       LEFT JOIN (SELECT fork_of_agent_id AS agent_id, COUNT(*) AS n FROM agents
                   WHERE fork_of_agent_id IS NOT NULL GROUP BY fork_of_agent_id)                           f ON f.agent_id = a.id
-     WHERE a.visibility IN ('public', 'unlisted')
+     WHERE a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0
        AND COALESCE(r.n, 0) > 0
   `;
   if (category) {
@@ -942,7 +979,7 @@ export async function handleNewestAgents(c: Context): Promise<Response> {
            u.handle AS handle, u.avatar_url AS avatar_url
       FROM agents a
       JOIN users u ON u.id = a.creator_user_id
-     WHERE a.visibility IN ('public', 'unlisted')
+     WHERE a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0
   `;
   if (category) {
     sql += " AND a.category = ?";
@@ -985,7 +1022,7 @@ export async function handleSearchAgents(c: Context): Promise<Response> {
            u.handle AS handle, u.avatar_url AS avatar_url
       FROM agents a
       JOIN users u ON u.id = a.creator_user_id
-     WHERE a.visibility IN ('public', 'unlisted')
+     WHERE a.visibility IN ('public', 'unlisted') AND a.moderation_hidden = 0
        AND (a.name LIKE ? OR a.slug LIKE ? OR a.description LIKE ?)
   `;
   if (category) {
@@ -1257,6 +1294,65 @@ export async function handleListEvolutions(c: Context): Promise<Response> {
   return c.json({ evolutions: rows.results ?? [] });
 }
 
+const REPORT_REASONS = new Set(["nsfw", "malware", "phishing", "spam", "other"]);
+
+/**
+ * POST /api/agents/:id/report — idempotent per (agent, reporter) pair. A
+ * second submit overwrites the reason (so a reporter can change their mind).
+ *
+ * Requires auth so we can block abuse and de-dupe. Private agents can still
+ * be reported by anyone with their id — that matters for unlisted links
+ * leaking, though the endpoint is 404 if they don't exist.
+ */
+export async function handleReportAgent(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+
+  let body: { reason?: unknown; detail?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid JSON body" }, 400);
+  }
+  if (typeof body.reason !== "string" || !REPORT_REASONS.has(body.reason)) {
+    return c.json({ error: `reason must be one of: ${[...REPORT_REASONS].join(", ")}` }, 400);
+  }
+  let detail: string | null = null;
+  if (body.detail !== undefined && body.detail !== null) {
+    if (typeof body.detail !== "string") {
+      return c.json({ error: "detail must be a string" }, 400);
+    }
+    const trimmed = body.detail.trim();
+    if (trimmed.length > 400) return c.json({ error: "detail must be ≤ 400 chars" }, 400);
+    detail = trimmed || null;
+  }
+
+  const agent = await db
+    .prepare("SELECT id FROM agents WHERE id = ?")
+    .bind(id)
+    .first<{ id: string }>();
+  if (!agent) return c.json({ error: "not found" }, 404);
+
+  await db
+    .prepare(
+      `INSERT INTO agent_reports (agent_id, reporter_user_id, reason, detail, created_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(agent_id, reporter_user_id)
+       DO UPDATE SET reason = excluded.reason,
+                     detail = excluded.detail,
+                     created_at = excluded.created_at`,
+    )
+    .bind(id, session.sub, body.reason, detail, Date.now())
+    .run();
+
+  return c.json({ reported: true, agent_id: id, reason: body.reason });
+}
+
 /** GET /api/agents/:id/subscribe — is the current user subscribed? */
 export async function handleIsSubscribed(c: Context): Promise<Response> {
   const session = c.get("session");
@@ -1299,7 +1395,7 @@ export async function handlePublicFeed(c: Context): Promise<Response> {
       `SELECT id, slug, name, description
          FROM agents
         WHERE creator_user_id = ? AND slug = ?
-          AND visibility IN ('public', 'unlisted')`,
+          AND visibility IN ('public', 'unlisted') AND moderation_hidden = 0`,
     )
     .bind(user.id, slug)
     .first<{ id: string; slug: string; name: string; description: string | null }>();
@@ -1403,7 +1499,7 @@ export async function handleGetPublicAgent(c: Context): Promise<Response> {
               current_version_id, fork_of_agent_id, created_at, updated_at
          FROM agents
         WHERE creator_user_id = ? AND slug = ?
-          AND visibility IN ('public', 'unlisted')`,
+          AND visibility IN ('public', 'unlisted') AND moderation_hidden = 0`,
     )
     .bind(user.id, slug)
     .first<AgentRow>();

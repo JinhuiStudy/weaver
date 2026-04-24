@@ -23,6 +23,7 @@ import {
   handlePublicGenealogy,
   handlePublicStats,
   handleRejectEvolution,
+  handleReportAgent,
   handleSearchAgents,
   handleSubmitFeedback,
   handleToggleSubscribe,
@@ -86,6 +87,8 @@ app.patch("/api/agents/:id", requireAuth(), handleUpdateAgent);
 app.post("/api/agents/:id/versions", requireAuth(), handleCreateVersion);
 app.post("/api/agents/:id/fork", requireAuth(), handleForkAgent);
 app.post("/api/agents/:id/subscribe", requireAuth(), handleToggleSubscribe);
+// Sprint 9: content moderation · reporters submit here.
+app.post("/api/agents/:id/report", requireAuth(), handleReportAgent);
 app.get("/api/agents/:id/subscribe", requireAuth(), handleIsSubscribed);
 app.get("/api/agents/:id/evolutions", requireAuth(), handleListAgentEvolutions);
 

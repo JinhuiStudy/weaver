@@ -1,4 +1,15 @@
-import { BellPlus, BellRing, BookOpen, GitFork, Network, Rss, ThumbsUp, Users } from "lucide-react";
+import {
+  BellPlus,
+  BellRing,
+  BookOpen,
+  Flag,
+  GitFork,
+  Network,
+  Rss,
+  ThumbsUp,
+  Users,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { WeaverMark } from "~/components/brand/WeaverMark";
@@ -115,6 +126,8 @@ export default function HandleAgentRoute() {
   const [forking, setForking] = useState(false);
   const [subscribed, setSubscribed] = useState(data.subscribed);
   const [subBusy, setSubBusy] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportToast, setReportToast] = useState<string | null>(null);
 
   const nodes = definition?.nodes ?? [];
   const edges = definition?.edges ?? [];
@@ -267,6 +280,21 @@ export default function HandleAgentRoute() {
               <Network className="lu" />
               Genealogy
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (!data.loggedIn) {
+                  navigate("/login");
+                  return;
+                }
+                setReportOpen(true);
+              }}
+              className="btn btn-ghost inline-flex items-center gap-1.5"
+              data-testid="report-button"
+            >
+              <Flag className="lu" />
+              신고
+            </button>
             <a
               href={`/api/public/agents/${handle}/${slug}/feed.json`}
               className="btn btn-ghost inline-flex items-center gap-1.5"
@@ -283,6 +311,28 @@ export default function HandleAgentRoute() {
           </div>
         </div>
       </section>
+
+      {reportToast ? (
+        <div
+          role="status"
+          className="pointer-events-none fixed top-14 left-1/2 z-20 -translate-x-1/2 rounded-full border border-weaver-indigo/40 bg-surface-1/90 px-4 py-2 text-xs text-text-primary shadow-[0_4px_12px_rgba(0,0,0,0.5)] backdrop-blur"
+          data-testid="report-toast"
+        >
+          {reportToast}
+        </div>
+      ) : null}
+
+      {reportOpen ? (
+        <ReportModal
+          agentId={agent.id}
+          onClose={() => setReportOpen(false)}
+          onDone={() => {
+            setReportOpen(false);
+            setReportToast("🚩 신고 접수됨 — 관리자가 확인합니다");
+            window.setTimeout(() => setReportToast(null), 2500);
+          }}
+        />
+      ) : null}
 
       <section
         className="canvas-bg border-y border-border px-8 py-12 md:px-16"
@@ -319,6 +369,142 @@ export default function HandleAgentRoute() {
         </div>
       </section>
     </main>
+  );
+}
+
+function ReportModal({
+  agentId,
+  onClose,
+  onDone,
+}: {
+  agentId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState<"spam" | "nsfw" | "malware" | "phishing" | "other">("spam");
+  const [detail, setDetail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agents/${agentId}/report`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason, detail: detail.trim() || undefined }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`신고 실패 (${res.status}): ${text.slice(0, 120)}`);
+      }
+      onDone();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 pt-[10vh] backdrop-blur-sm"
+      role="dialog"
+      aria-label="Report agent"
+      aria-modal="true"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <form
+        className="w-[480px] max-w-[92vw] overflow-hidden rounded-[12px] border border-border-strong bg-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+        onSubmit={onSubmit}
+        data-testid="report-modal"
+      >
+        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+          <Flag className="lu" />
+          <span className="text-sm font-semibold tracking-tight">Agent 신고</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close report"
+            className="btn btn-ghost btn-icon ml-auto"
+          >
+            <X className="lu" />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          <div>
+            <label
+              htmlFor="report-reason"
+              className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.15em] text-text-tertiary"
+            >
+              사유
+            </label>
+            <select
+              id="report-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value as typeof reason)}
+              className="inp"
+              data-testid="report-reason"
+            >
+              <option value="spam">spam — 반복/저품질</option>
+              <option value="nsfw">nsfw — 성인/음란</option>
+              <option value="malware">malware — 악성코드</option>
+              <option value="phishing">phishing — 피싱</option>
+              <option value="other">other — 기타</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="report-detail"
+              className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.15em] text-text-tertiary"
+            >
+              설명 (선택)
+            </label>
+            <textarea
+              id="report-detail"
+              value={detail}
+              onChange={(e) => setDetail(e.target.value)}
+              maxLength={400}
+              rows={3}
+              placeholder="어떤 문제가 있나요? (선택)"
+              className="inp h-auto min-h-[72px] w-full resize-y"
+              data-testid="report-detail"
+            />
+            <div className="mt-1 font-mono text-[10px] text-text-tertiary">
+              {detail.length} / 400
+            </div>
+          </div>
+
+          {error ? (
+            <div
+              role="alert"
+              className="rounded-[6px] border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300"
+            >
+              {error}
+            </div>
+          ) : null}
+        </div>
+        <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={busy}>
+            취소
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            loading={busy}
+            disabled={busy}
+            data-testid="report-submit"
+          >
+            신고 접수
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
