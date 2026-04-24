@@ -906,6 +906,61 @@ export async function handleSearchAgents(c: Context): Promise<Response> {
   return c.json({ q, category: category || null, agents: rows.results ?? [] });
 }
 
+type EvolutionRow = {
+  id: string;
+  agent_version_id: string;
+  strategy: string;
+  shadow_case_count: number;
+  shadow_wins: number;
+  shadow_losses: number;
+  win_rate: number | null;
+  suggested_at: number | null;
+  accepted_at: number | null;
+  rejected_at: number | null;
+  created_at: number;
+  agent_id: string;
+  agent_slug: string;
+  agent_name: string;
+  agent_handle: string;
+};
+
+/**
+ * GET /api/admin/evolutions — Sprint 5 D4 · admin-only list of generated
+ * mutation candidates. Requires a session whose handle matches
+ * `ADMIN_HANDLE` env var (falls back to "dev" so local Playwright works).
+ */
+export async function handleListEvolutions(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  const adminHandle = (c.env as { ADMIN_HANDLE?: string }).ADMIN_HANDLE ?? "dev";
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+  if (session.handle !== adminHandle) {
+    return c.json({ error: "admin only" }, 403);
+  }
+
+  const rows = await db
+    .prepare(
+      `SELECT
+          e.id, e.agent_version_id, e.strategy,
+          e.shadow_case_count, e.shadow_wins, e.shadow_losses, e.win_rate,
+          e.suggested_at, e.accepted_at, e.rejected_at, e.created_at,
+          a.id   AS agent_id,
+          a.slug AS agent_slug,
+          a.name AS agent_name,
+          u.handle AS agent_handle
+         FROM agent_evolutions e
+         JOIN agent_versions av ON av.id = e.agent_version_id
+         JOIN agents a ON a.id = av.agent_id
+         JOIN users  u ON u.id = a.creator_user_id
+        ORDER BY e.created_at DESC
+        LIMIT 200`,
+    )
+    .all<EvolutionRow>();
+
+  return c.json({ evolutions: rows.results ?? [] });
+}
+
 /** GET /api/agents/:id/subscribe — is the current user subscribed? */
 export async function handleIsSubscribed(c: Context): Promise<Response> {
   const session = c.get("session");

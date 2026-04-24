@@ -9,6 +9,7 @@ export default [
   route("tools/:toolId/runs/:runId", "routes/tools.$toolId.runs.$runId.tsx"),
   route("me/feed", "routes/me.feed.tsx"),
   route("search", "routes/search.tsx"),
+  route("admin/evolutions", "routes/admin.evolutions.tsx"),
   // Genealogy tree for a specific public agent. Must be registered BEFORE
   // the two-segment `:prefixedHandle/:slug` catch-all below.
   route(":prefixedHandle/:slug/genealogy", "routes/handle-agent.genealogy.tsx"),

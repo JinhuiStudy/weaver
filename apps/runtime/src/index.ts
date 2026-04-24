@@ -14,6 +14,7 @@ import {
   handleGetPublicAgent,
   handleIsSubscribed,
   handleListAgents,
+  handleListEvolutions,
   handleMyFeed,
   handlePublicFeed,
   handlePublicGenealogy,
@@ -275,6 +276,9 @@ app.post("/api/runs/:id/feedback", requireAuth(), handleSubmitFeedback);
 
 // Sprint 3 D3: subscribed agents' aggregated timeline.
 app.get("/api/me/feed", requireAuth(), handleMyFeed);
+
+// Sprint 5 D4: admin dashboard — evolution candidates list.
+app.get("/api/admin/evolutions", requireAuth(), handleListEvolutions);
 
 /**
  * Cron body — extracted so we can call it both from `scheduled()` (Cloudflare
