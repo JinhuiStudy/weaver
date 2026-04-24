@@ -8,6 +8,7 @@ import {
   Play,
   Redo2,
   Save,
+  Settings,
   Sparkles,
   Undo2,
   Upload,
@@ -19,11 +20,12 @@ import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
+import { type AgentMetadata, SettingsModal } from "~/components/canvas/SettingsModal";
 import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
 import { loadCanvasFromFile } from "~/lib/importGraph";
 import { createRun } from "~/lib/runs";
-import { callRuntime, loadSessionServer } from "~/lib/session.server";
+import { callRuntime, isDev, loadSessionServer } from "~/lib/session.server";
 import { useCanvasPersistence } from "~/lib/useCanvasPersistence";
 import { type CanvasNode, useCanvas } from "~/stores/canvas";
 import type { Route } from "./+types/builder.$id";
@@ -69,6 +71,24 @@ export async function loader({ request, context, params }: Route.LoaderArgs) {
       } catch {
         savedAgent = null;
       }
+    } else if (isDev(env)) {
+      // Dev Playwright runs without a live runtime, so /api/agents/:id returns
+      // 502. Mint a mock agent so UIs that only render for saved agents
+      // (e.g. the Settings modal) can still be exercised in tests. Production
+      // keeps `savedAgent = null` because isDev() is gated on localhost.
+      savedAgent = {
+        id: params.id,
+        slug: "dev-agent",
+        name: "Dev Agent",
+        description: "로컬 dev 빌더의 mock agent — 실제 runtime 이 없을 때 씁니다.",
+        visibility: "public",
+        category: "productivity",
+        current_version_id: null,
+        fork_of_agent_id: null,
+        created_at: 0,
+        updated_at: 0,
+        definition: null,
+      };
     }
   }
   return { session, savedAgent };
@@ -160,7 +180,13 @@ const demoEdges: Edge[] = [
 ];
 
 export default function BuilderRoute({ params }: Route.ComponentProps) {
-  const { savedAgent } = useLoaderData<typeof loader>();
+  const { savedAgent: initialAgent } = useLoaderData<typeof loader>();
+  // Mirror the server-loaded agent in local state so a SettingsModal save can
+  // flip `savedAgent.visibility` (etc.) without a full route refresh.
+  const [savedAgent, setSavedAgent] = useState(initialAgent);
+  useEffect(() => {
+    setSavedAgent(initialAgent);
+  }, [initialAgent]);
 
   // Hydrate from the server's saved definition when present — fall back to
   // the demo seed so a fresh tool id (e.g. `/builder/demo`) still has nodes.
@@ -280,6 +306,7 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteInitialMode, setPaletteInitialMode] = useState<"commands" | "compose">("commands");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const openPalette = useCallback((mode: "commands" | "compose" = "commands") => {
     setPaletteInitialMode(mode);
@@ -340,10 +367,21 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
           </Link>
           <div className="flex items-baseline gap-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-text-tertiary">
-              tool
+              {savedAgent ? "agent" : "tool"}
             </span>
-            <span className="text-sm font-semibold tracking-tight">{params.id}</span>
-            <Badge tone="muted">v0 · draft</Badge>
+            <span className="text-sm font-semibold tracking-tight" data-testid="builder-title">
+              {savedAgent ? savedAgent.name : params.id}
+            </span>
+            {savedAgent ? (
+              <>
+                <span className="font-mono text-[10px] text-text-tertiary">@{savedAgent.slug}</span>
+                <Badge tone={savedAgent.visibility === "public" ? "ok" : "info"}>
+                  {savedAgent.visibility}
+                </Badge>
+              </>
+            ) : (
+              <Badge tone="muted">v0 · draft</Badge>
+            )}
             <SyncBadge status={status} />
           </div>
         </div>
@@ -380,6 +418,18 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
             Help
             <Kbd className="ml-1">?</Kbd>
           </Button>
+          {savedAgent ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<Settings className="lu" />}
+              onClick={() => setSettingsOpen(true)}
+              title="Agent settings"
+              data-testid="open-settings"
+            >
+              Settings
+            </Button>
+          ) : null}
           <span className="h-4 w-px bg-border" aria-hidden />
           <Button
             variant="ghost"
@@ -449,6 +499,35 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         initialMode={paletteInitialMode}
       />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        agent={
+          savedAgent
+            ? {
+                id: savedAgent.id,
+                slug: savedAgent.slug,
+                name: savedAgent.name,
+                description: savedAgent.description,
+                category: savedAgent.category,
+                visibility: savedAgent.visibility,
+              }
+            : null
+        }
+        onSaved={(next: AgentMetadata) => {
+          setSavedAgent((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  name: next.name,
+                  description: next.description,
+                  category: next.category,
+                  visibility: next.visibility,
+                }
+              : prev,
+          );
+        }}
+      />
     </div>
   );
 }

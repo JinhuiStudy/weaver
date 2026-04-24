@@ -61,7 +61,7 @@ export async function loadSessionServer(request: Request, env: Env): Promise<Ses
   }
 }
 
-function isDev(env: Env): boolean {
+export function isDev(env: Env): boolean {
   return (env.RUNTIME_URL ?? "").startsWith("http://localhost");
 }
 

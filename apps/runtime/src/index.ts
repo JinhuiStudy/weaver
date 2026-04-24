@@ -6,6 +6,7 @@ import {
   handleGetAgent,
   handleGetPublicAgent,
   handleListAgents,
+  handleUpdateAgent,
 } from "./api/agents";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
 import { requireRateLimit } from "./auth/rate-limit";
@@ -51,6 +52,7 @@ mountAuthRoutes(app);
 app.get("/api/agents", requireAuth(), handleListAgents);
 app.post("/api/agents", requireAuth(), handleCreateAgent);
 app.get("/api/agents/:id", requireAuth(), handleGetAgent);
+app.patch("/api/agents/:id", requireAuth(), handleUpdateAgent);
 app.post("/api/agents/:id/versions", requireAuth(), handleCreateVersion);
 app.post("/api/agents/:id/fork", requireAuth(), handleForkAgent);
 

@@ -176,6 +176,146 @@ describe("POST /api/agents/:id/fork", () => {
   });
 });
 
+describe("PATCH /api/agents/:id", () => {
+  it("updates name/description/category/visibility for the creator", async () => {
+    const session = await createAuthedSession({ githubId: 8400, login: "metadata-editor" });
+    const created = await createAgent(session.cookie, "Old Name");
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({
+        name: "Brand New Name",
+        description: "A freshly edited description.",
+        category: "productivity",
+        visibility: "unlisted",
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      id: string;
+      slug: string;
+      name: string;
+      description: string | null;
+      category: string | null;
+      visibility: string;
+    };
+    expect(body.name).toBe("Brand New Name");
+    expect(body.description).toBe("A freshly edited description.");
+    expect(body.category).toBe("productivity");
+    expect(body.visibility).toBe("unlisted");
+    // Slug should NOT change on a metadata edit — agents keep stable public URLs.
+    expect(body.slug).toBe("old-name");
+
+    const row = await env.DB.prepare(
+      "SELECT name, description, category, visibility, slug FROM agents WHERE id = ?",
+    )
+      .bind(created.id)
+      .first<{
+        name: string;
+        description: string | null;
+        category: string | null;
+        visibility: string;
+        slug: string;
+      }>();
+    expect(row?.name).toBe("Brand New Name");
+    expect(row?.visibility).toBe("unlisted");
+    expect(row?.slug).toBe("old-name");
+  });
+
+  it("supports partial edits (description only)", async () => {
+    const session = await createAuthedSession({ githubId: 8401, login: "partial-editor" });
+    const created = await createAgent(session.cookie, "Partial");
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({ description: "Just a blurb." }),
+    });
+    expect(res.status).toBe(200);
+
+    const row = await env.DB.prepare("SELECT name, description FROM agents WHERE id = ?")
+      .bind(created.id)
+      .first<{ name: string; description: string | null }>();
+    expect(row?.name).toBe("Partial");
+    expect(row?.description).toBe("Just a blurb.");
+  });
+
+  it("allows clearing description/category with explicit null", async () => {
+    const session = await createAuthedSession({ githubId: 8402, login: "null-editor" });
+    const res0 = await SELF.fetch("https://runtime.test/api/agents", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({
+        name: "Fill",
+        description: "drop me",
+        category: "research",
+        definition: DEF,
+      }),
+    });
+    const created = (await res0.json()) as { id: string };
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({ description: null, category: null }),
+    });
+    expect(res.status).toBe(200);
+
+    const row = await env.DB.prepare("SELECT description, category FROM agents WHERE id = ?")
+      .bind(created.id)
+      .first<{ description: string | null; category: string | null }>();
+    expect(row?.description).toBeNull();
+    expect(row?.category).toBeNull();
+  });
+
+  it("rejects a non-creator with 404 (to avoid leaking existence)", async () => {
+    const a = await createAuthedSession({ githubId: 8403, login: "owner-p" });
+    const b = await createAuthedSession({ githubId: 8404, login: "stranger-p" });
+    const agent = await createAgent(a.cookie, "Not Yours");
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${agent.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: b.cookie },
+      body: JSON.stringify({ name: "Hijacked" }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects an invalid visibility with 400", async () => {
+    const session = await createAuthedSession({ githubId: 8405, login: "bad-vis" });
+    const created = await createAgent(session.cookie, "Vis Test");
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({ visibility: "secret" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects empty name with 400", async () => {
+    const session = await createAuthedSession({ githubId: 8406, login: "empty-name" });
+    const created = await createAgent(session.cookie, "Has Name");
+
+    const res = await SELF.fetch(`https://runtime.test/api/agents/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie: session.cookie },
+      body: JSON.stringify({ name: "   " }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects anonymous with 401", async () => {
+    const res = await SELF.fetch("https://runtime.test/api/agents/01JPATCH0000000000000000000", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "anon" }),
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe("GET /api/public/agents/:handle/:slug", () => {
   it("serves a public agent anonymously (no session cookie)", async () => {
     const author = await createAuthedSession({ githubId: 8300, login: "public-author" });

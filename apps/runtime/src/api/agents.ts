@@ -213,6 +213,149 @@ export async function handleGetAgent(c: Context): Promise<Response> {
 }
 
 /**
+ * Creator-only — edit agent metadata (name/description/category/visibility).
+ * Slug is intentionally immutable here: public `/@handle/slug` URLs are load-
+ * bearing once shared, so renaming needs a dedicated flow (future Sprint).
+ *
+ * 404 is returned for both "not found" and "not the creator" — same as
+ * handleGetAgent — so a stranger can't probe whether an agent id exists.
+ */
+export async function handleUpdateAgent(c: Context): Promise<Response> {
+  const session = c.get("session");
+  const db = (c.env as { DB?: D1Database }).DB;
+  if (!session) return c.json({ error: "authentication required" }, 401);
+  if (!db) return c.json({ error: "db unavailable" }, 503);
+
+  const id = c.req.param("id");
+  if (!id) return c.json({ error: "id is required" }, 400);
+  const existing = await db
+    .prepare(
+      `SELECT id, slug, creator_user_id, name, description, visibility, category,
+              current_version_id, fork_of_agent_id, created_at, updated_at
+         FROM agents WHERE id = ? AND creator_user_id = ?`,
+    )
+    .bind(id, session.sub)
+    .first<AgentRow>();
+  if (!existing) return c.json({ error: "not found" }, 404);
+
+  let body: {
+    name?: unknown;
+    description?: unknown;
+    category?: unknown;
+    visibility?: unknown;
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "invalid JSON body" }, 400);
+  }
+
+  // Build the SET clause dynamically so callers can PATCH a single field
+  // without clobbering the rest. `undefined` = keep; `null` = explicit clear
+  // (for nullable columns: description/category).
+  const updates: string[] = [];
+  const binds: Array<string | number | null> = [];
+  let nextName = existing.name;
+  let nextDescription = existing.description;
+  let nextCategory = existing.category;
+  let nextVisibility = existing.visibility;
+
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string") {
+      return c.json({ error: "name must be a string" }, 400);
+    }
+    const trimmed = body.name.trim();
+    if (!trimmed) return c.json({ error: "name must not be empty" }, 400);
+    if (trimmed.length > 80) return c.json({ error: "name must be ≤ 80 chars" }, 400);
+    nextName = trimmed;
+    updates.push("name = ?");
+    binds.push(trimmed);
+  }
+
+  if (body.description !== undefined) {
+    if (body.description === null) {
+      nextDescription = null;
+      updates.push("description = NULL");
+    } else if (typeof body.description === "string") {
+      const trimmed = body.description.trim();
+      if (trimmed.length > 400) {
+        return c.json({ error: "description must be ≤ 400 chars" }, 400);
+      }
+      nextDescription = trimmed || null;
+      updates.push("description = ?");
+      binds.push(trimmed || null);
+    } else {
+      return c.json({ error: "description must be a string or null" }, 400);
+    }
+  }
+
+  if (body.category !== undefined) {
+    if (body.category === null) {
+      nextCategory = null;
+      updates.push("category = NULL");
+    } else if (typeof body.category === "string") {
+      const trimmed = body.category.trim();
+      if (trimmed.length > 40) return c.json({ error: "category must be ≤ 40 chars" }, 400);
+      nextCategory = trimmed || null;
+      updates.push("category = ?");
+      binds.push(trimmed || null);
+    } else {
+      return c.json({ error: "category must be a string or null" }, 400);
+    }
+  }
+
+  if (body.visibility !== undefined) {
+    if (
+      typeof body.visibility !== "string" ||
+      !["public", "unlisted", "private"].includes(body.visibility)
+    ) {
+      return c.json({ error: "visibility must be public|unlisted|private" }, 400);
+    }
+    nextVisibility = body.visibility;
+    updates.push("visibility = ?");
+    binds.push(body.visibility);
+  }
+
+  if (updates.length === 0) {
+    // No-op PATCH — still touch updated_at so the "내 Agents" list re-orders.
+    // Return the row as-is.
+    return c.json({
+      id: existing.id,
+      slug: existing.slug,
+      name: existing.name,
+      description: existing.description,
+      visibility: existing.visibility,
+      category: existing.category,
+      current_version_id: existing.current_version_id,
+      fork_of_agent_id: existing.fork_of_agent_id,
+      created_at: existing.created_at,
+      updated_at: existing.updated_at,
+    });
+  }
+
+  const now = Date.now();
+  updates.push("updated_at = ?");
+  binds.push(now);
+  binds.push(id);
+
+  const stmt = db.prepare(`UPDATE agents SET ${updates.join(", ")} WHERE id = ?`);
+  await stmt.bind(...binds).run();
+
+  return c.json({
+    id: existing.id,
+    slug: existing.slug,
+    name: nextName,
+    description: nextDescription,
+    visibility: nextVisibility,
+    category: nextCategory,
+    current_version_id: existing.current_version_id,
+    fork_of_agent_id: existing.fork_of_agent_id,
+    created_at: existing.created_at,
+    updated_at: now,
+  });
+}
+
+/**
  * Creator-only — push a new version and atomically swap
  * `agents.current_version_id`. Monotonic version number is max+1 scoped to
  * the agent. Duplicate prompt_hash is fine (we store the version anyway so
