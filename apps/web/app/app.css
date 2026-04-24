@@ -1,6 +1,12 @@
 @import "tailwindcss" source(".");
 @import "./styles/tokens.css";
 
+/* ── Mobile guardrail · clip any horizontal overflow so decorative
+ *    fixed backdrops and wide nav rows never induce a real side-scroll. */
+html, body {
+  overflow-x: clip;
+}
+
 /* ── Tailwind v4 theme bindings ─────────────────────────── */
 @theme {
   --font-sans: "Inter", "Pretendard Variable", -apple-system, sans-serif;
@@ -113,9 +119,23 @@ p {
 .btn-primary:hover {
   background: var(--weaver-indigo-hover);
 }
-.btn-primary:focus-visible {
+
+/* ── Unified focus ring — every interactive primitive shares the same
+ *    indigo halo so keyboard users see consistent state across pages.  */
+.btn:focus-visible,
+a:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible:not(.inp),
+[role="button"]:focus-visible,
+summary:focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus-ring);
+  border-radius: 6px;
+}
+.btn:focus-visible {
+  /* Inherit the button's own radius so the ring wraps the pill. */
+  border-radius: inherit;
 }
 .btn-secondary {
   background: var(--surface-3);
@@ -1319,5 +1339,24 @@ p {
   100% { transform: translateY(0); }
 }
 .wv-float { animation: wv-node-float 6s ease-in-out infinite; will-change: transform; }
+
+/* ── Top navigation progress — indigo sweep while a route loader runs. */
+@keyframes wv-nav-progress {
+  0%   { transform: translateX(-100%); }
+  50%  { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+.nav-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--weaver-indigo) 50%,
+    var(--weaver-cyan) 60%,
+    transparent
+  );
+  animation: wv-nav-progress 1.2s linear infinite;
+}
 .wv-float-d2 { animation-delay: 1.5s; }
 .wv-float-d3 { animation-delay: 3s; }

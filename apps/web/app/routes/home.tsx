@@ -116,29 +116,40 @@ export default function Home() {
       {/* Ambient gradient backdrop — sits behind everything, non-interactive. */}
       <div className="aurora-backdrop" aria-hidden />
 
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/70 bg-bg-base/80 px-8 py-4 backdrop-blur">
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 border-b border-border/70 bg-bg-base/80 px-4 py-3 backdrop-blur sm:px-8 sm:py-4">
         <div className="flex items-center gap-3">
           <WeaverMark className="h-6 w-6" />
           <span className="text-sm font-semibold tracking-tight">Weaver</span>
-          <span className="kbd">v0.0.0</span>
+          <span className="kbd hidden sm:inline">v0.0.0</span>
         </div>
-        <nav className="flex items-center gap-2">
-          <Link to="/explore" className="btn btn-ghost" data-testid="home-explore-link">
+        <nav className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+          <Link
+            to="/explore"
+            className="btn btn-ghost btn-sm"
+            data-testid="home-explore-link"
+            aria-label="Explore"
+          >
             <Compass className="lu" />
-            Explore
+            <span className="hidden sm:inline">Explore</span>
           </Link>
-          <Link to="/help" className="btn btn-ghost" data-testid="home-help-link">
+          <Link
+            to="/help"
+            className="btn btn-ghost btn-sm"
+            data-testid="home-help-link"
+            aria-label="도움말"
+          >
             <BookOpen className="lu" />
-            도움말
+            <span className="hidden sm:inline">도움말</span>
           </Link>
-          <Link to="/design" className="btn btn-ghost">
+          <Link to="/design" className="btn btn-ghost hidden md:inline-flex">
             Design System
           </Link>
           <a
             href="https://github.com/JinhuiStudy/weaver"
-            className="btn btn-ghost"
+            className="btn btn-ghost hidden md:inline-flex"
             target="_blank"
             rel="noreferrer noopener"
+            aria-label="GitHub 저장소"
           >
             <Github className="lu" />
             GitHub
@@ -153,8 +164,10 @@ export default function Home() {
           <Link
             to="/builder/demo"
             className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+            aria-label="빌더 열기"
           >
-            빌더 열기
+            <span className="hidden sm:inline">빌더 열기</span>
+            <span className="sm:hidden">빌더</span>
             <ArrowRight className="lu" />
           </Link>
         </nav>
@@ -470,8 +483,9 @@ function UserBadge({ session }: { session: Session }) {
           {handle.slice(0, 1).toUpperCase()}
         </div>
       )}
-      <span className="font-mono text-xs text-text-secondary">@{handle}</span>
-      <form method="POST" action="/auth/logout">
+      {/* Handle + "로그아웃" 은 데스크탑에서만 · 모바일은 아바타만 */}
+      <span className="hidden font-mono text-xs text-text-secondary sm:inline">@{handle}</span>
+      <form method="POST" action="/auth/logout" className="hidden sm:block">
         <button type="submit" className="btn btn-ghost btn-sm" data-testid="logout-button">
           로그아웃
         </button>

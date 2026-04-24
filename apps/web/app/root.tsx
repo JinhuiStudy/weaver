@@ -6,6 +6,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from "react-router";
 import type { Route } from "./+types/root";
 import { WeaverMark } from "./components/brand/WeaverMark";
@@ -45,7 +46,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const navigation = useNavigation();
+  const pending = navigation.state !== "idle";
+  return (
+    <>
+      {/* Top-of-page navigation progress bar — visible whenever React Router
+         is fetching a new route (loader-bound navigation). Gives users
+         instant feedback instead of an apparently frozen click. */}
+      <div
+        aria-hidden
+        className={`pointer-events-none fixed top-0 left-0 z-[9999] h-[2px] w-full overflow-hidden transition-opacity ${
+          pending ? "opacity-100" : "opacity-0"
+        }`}
+        data-testid="nav-progress"
+      >
+        <div className="nav-progress-bar" />
+      </div>
+      <Outlet />
+    </>
+  );
 }
 
 /**

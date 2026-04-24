@@ -20,6 +20,7 @@ import { HelpModal } from "~/components/canvas/HelpModal";
 import { Inspector } from "~/components/canvas/Inspector";
 import { NodeCanvas } from "~/components/canvas/NodeCanvas";
 import { Palette } from "~/components/canvas/Palette";
+import { SaveAsModal, type SaveAsValues } from "~/components/canvas/SaveAsModal";
 import { type AgentMetadata, SettingsModal } from "~/components/canvas/SettingsModal";
 import { Badge, Button, Kbd } from "~/components/ui";
 import { downloadCanvasAsGraphJson } from "~/lib/exportGraph";
@@ -261,37 +262,57 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
     return fallback;
   }, []);
 
-  const onPublish = useCallback(async () => {
+  // NEW agent path — SaveAsModal collects full metadata then POSTs.
+  const [saveAsOpen, setSaveAsOpen] = useState(false);
+  const submitNewAgent = useCallback(
+    async (values: SaveAsValues) => {
+      const state = useCanvas.getState();
+      const definition = {
+        tool_id: params.id,
+        nodes: state.nodes,
+        edges: state.edges,
+      };
+      const res = await fetch("/api/agents", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...values, definition }),
+      });
+      if (res.status === 401) {
+        navigate("/login");
+        throw new Error("401 · 로그인이 필요해요");
+      }
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(
+          humanizeError(
+            new Error(`save failed (${res.status}): ${msg}`),
+            "저장에 실패했어요. 네트워크를 확인하고 다시 시도해 주세요.",
+          ),
+        );
+      }
+      setSaveAsOpen(false);
+      flashToast("✓ workspace 에 저장됐어요");
+      navigate("/");
+    },
+    [params.id, navigate, flashToast, humanizeError],
+  );
+
+  // EXISTING agent path — push a new version directly, no dialog.
+  const pushNewVersion = useCallback(async () => {
+    if (!savedAgent) return;
     const state = useCanvas.getState();
     const definition = {
       tool_id: params.id,
       nodes: state.nodes,
       edges: state.edges,
     };
-
     setPublishing(true);
     try {
-      let res: Response;
-      if (savedAgent) {
-        // Existing agent — push a new version, don't rename.
-        res = await fetch(`/api/agents/${savedAgent.id}/versions`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ definition }),
-        });
-      } else {
-        // New agent — prompt for a name, create + first version.
-        const name = window.prompt(
-          "Agent 이름을 입력하세요 (예: HN Summary). 슬러그는 자동으로 생성됩니다.",
-        );
-        if (!name) return;
-        res = await fetch("/api/agents", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name, definition }),
-        });
-      }
-
+      const res = await fetch(`/api/agents/${savedAgent.id}/versions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ definition }),
+      });
       if (res.status === 401) {
         navigate("/login");
         return;
@@ -300,16 +321,13 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         const msg = await res.text();
         throw new Error(`save failed (${res.status}): ${msg}`);
       }
-      flashToast(savedAgent ? "✓ 새 버전으로 저장됐어요" : "✓ workspace 에 저장됐어요");
+      flashToast("✓ 새 버전으로 저장됐어요");
       navigate("/");
     } catch (err) {
-      console.error("publish failed", err);
       flashToast(
         humanizeError(
           err,
-          savedAgent
-            ? "버전 저장에 실패했어요. canvas 를 로컬에 export 한 뒤 다시 시도해 주세요."
-            : "저장에 실패했어요. 네트워크를 확인하고 다시 시도해 주세요.",
+          "버전 저장에 실패했어요. canvas 를 로컬에 export 한 뒤 다시 시도해 주세요.",
         ),
         "warn",
       );
@@ -317,6 +335,11 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
       setPublishing(false);
     }
   }, [savedAgent, params.id, navigate, flashToast, humanizeError]);
+
+  const onPublish = useCallback(() => {
+    if (savedAgent) void pushNewVersion();
+    else setSaveAsOpen(true);
+  }, [savedAgent, pushNewVersion]);
 
   // Hidden file input triggered by the Import button; separated so we can
   // reuse the hydrate logic from elsewhere (e.g. ⌘K palette).
@@ -567,6 +590,11 @@ export default function BuilderRoute({ params }: Route.ComponentProps) {
         initialMode={paletteInitialMode}
       />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <SaveAsModal
+        open={saveAsOpen}
+        onClose={() => setSaveAsOpen(false)}
+        onSubmit={submitNewAgent}
+      />
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
