@@ -30,6 +30,7 @@ import {
   handleUpdateAgent,
 } from "./api/agents";
 import { handleGetRun, handleListMyRuns } from "./api/runs";
+import { handleWaitlist } from "./api/waitlist";
 import { requireAuth, sessionMiddleware } from "./auth/middleware";
 import { bumpBy, requireRateLimit, todayCount } from "./auth/rate-limit";
 import { mountAuthRoutes } from "./auth/routes";
@@ -102,6 +103,9 @@ app.get("/api/public/agents/:handle/:slug", handleGetPublicAgent);
 app.get("/api/public/agents/:handle/:slug/feed.json", handlePublicFeed);
 app.get("/api/public/agents/:handle/:slug/stats", handlePublicStats);
 app.get("/api/public/agents/:handle/:slug/genealogy", handlePublicGenealogy);
+
+// Sprint 8: pre-launch waitlist (public).
+app.post("/api/waitlist", handleWaitlist);
 
 app.get("/api/me", requireAuth(), async (c) => {
   const session = c.get("session");

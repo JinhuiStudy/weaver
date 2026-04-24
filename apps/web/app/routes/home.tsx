@@ -5,6 +5,7 @@ import {
   Compass,
   GitFork,
   Github,
+  Mail,
   Rss,
   Search as SearchIcon,
   Sparkles,
@@ -208,6 +209,16 @@ export default function Home() {
               시작하기
               <ArrowRight className="lu" />
             </Link>
+            {session ? null : (
+              <Link
+                to="/waitlist"
+                className="btn btn-secondary btn-lg inline-flex items-center gap-1.5"
+                data-testid="hero-waitlist-link"
+              >
+                <Mail className="lu" />
+                초대장 받기
+              </Link>
+            )}
             <Link
               to="/help"
               className="btn btn-outlined btn-lg inline-flex items-center gap-1.5"
@@ -314,6 +325,12 @@ export default function Home() {
             </a>
           </span>
           <div className="flex items-center gap-4 font-mono">
+            <Link to="/explore" className="hover:text-text-primary">
+              Explore
+            </Link>
+            <Link to="/waitlist" className="hover:text-text-primary">
+              Waitlist
+            </Link>
             <Link to="/help" className="hover:text-text-primary">
               도움말
             </Link>

@@ -10,6 +10,7 @@ export default [
   route("me/feed", "routes/me.feed.tsx"),
   route("search", "routes/search.tsx"),
   route("explore", "routes/explore.tsx"),
+  route("waitlist", "routes/waitlist.tsx"),
   route("admin/evolutions", "routes/admin.evolutions.tsx"),
   route("agents/:agentId/evolutions", "routes/agents.$agentId.evolutions.tsx"),
   // Genealogy tree for a specific public agent. Must be registered BEFORE
