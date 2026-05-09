@@ -402,9 +402,7 @@ git commit -m "feat: phase-0 scaffold — RR7 + Hono + tokens
 - packages/core: valibot + ulid 기본 export
 - tokens.css → Tailwind v4 @theme 바인딩
 - GitHub Actions: CI + Deploy (Cloudflare Pages + Workers)
-- 전 스택 \$0 (ADR-006)
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
+- 전 스택 \$0 (ADR-006)"
 
 git push -u origin main
 ```
@@ -447,7 +445,6 @@ git push -u origin main
 ## 📎 참고 문서
 
 - [`README.md`](../README.md)
-- [`CLAUDE.md`](../CLAUDE.md) — Claude Code 세션 컨텍스트
 - [`docs/ROADMAP.md`](./ROADMAP.md)
 - [`docs/TECH_STACK.md`](./TECH_STACK.md)
 - [`docs/decisions/ADR-006-free-tier-first.md`](./decisions/ADR-006-free-tier-first.md)

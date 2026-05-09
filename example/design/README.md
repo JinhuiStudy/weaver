@@ -1,6 +1,6 @@
 # example/design/
 
-> Weaver 디자인 시스템 소스 파일. Claude Design 으로 생성된 HTML 라이브 데모 + CSS 토큰.
+> Weaver 디자인 시스템 소스 파일. HTML 라이브 데모 + CSS 토큰.
 
 ## 파일 목록
 

@@ -78,7 +78,7 @@
 ### ✅ 완료된 것
 
 **`apps/web` (배포됨)** — React Router v7 Framework Mode on Cloudflare Workers
-- Claude Design v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
+- 디자인 시스템 v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
 - 컴포넌트 라이브러리: `Button`(7 variant) · `Input` · `Badge` · `Card` · `Tabs` · `Kbd` · `Tooltip` · `Skeleton` · `Empty` · `Toast`
 - `WvNode` 캔버스 프리미티브 (5 type × 7 state) + xyflow `Handle` 통합
 - **`/` 홈 히어로** — 브랜드 워드마크 · 4노드 데모 스트립 · 피처 카드
@@ -187,7 +187,7 @@ weaver/
 │
 ├── docs/                  # 📄 VISION · ARCHITECTURE · ROADMAP · ADR 6건
 ├── specs/                 # 📐 design-system · screens · node-types · tool-registry · observability · eval
-└── example/design/        # 🎨 Claude Design HTML 라이브 데모 + tokens.css (단일 진실의 원천)
+└── example/design/        # 🎨 디자인 시스템 HTML 라이브 데모 + tokens.css (단일 진실의 원천)
 ```
 
 각 4개 레이어의 상세: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)

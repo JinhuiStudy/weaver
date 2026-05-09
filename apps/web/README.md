@@ -17,7 +17,7 @@
 
 ## 핵심 기능
 
-- Claude Design v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
+- 디자인 시스템 v2 토큰 ⇒ Tailwind v4 `@theme` 바인딩 (raw hex 0)
 - 컴포넌트 라이브러리: `Button` · `Input` · `Badge` · `Card` · `Tabs` · `Kbd` · `Tooltip` · `Skeleton` · `Empty` · `Toast`
 - `WvNode` 캔버스 프리미티브 (5 type × 7 state) + xyflow `Handle`
 - 팔레트 → 캔버스 드래그&드롭 · 포트 엣지 연결 · 인스펙터 valibot 검증 · branch outputs chip 편집
@@ -44,7 +44,7 @@ doppler run --project weaver --config dev -- pnpm deploy
 ## 테스트
 
 - Playwright e2e **42 시나리오** · 스크린샷 `tests/screenshots/` 에 commit
-- 단계별 PNG 눈 검증 필수 (CLAUDE.md 테스트 규율)
+- 단계별 PNG 눈 검증 필수 (TDD + 스크린샷 검증 규율)
 
 ## 다음 개발
 

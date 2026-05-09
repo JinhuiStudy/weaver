@@ -121,7 +121,6 @@ Weaver 는 **"Evolving Agent Network"** 로 재포지셔닝. 한 줄:
 - `docs/NEXT.md` — 14주 주차별 계획 전면 재작성 (horizontal → evolving network)
 - `docs/ROADMAP.md` — Week 5-14 재구성
 - `README.md` — 한 줄 pitch 및 타겟 유저 변경
-- `CLAUDE.md` — 설계 원칙 #1 "에이전트 = 내부툴의 단위" → "**에이전트 = 진화하는 공개 미디어**" 로 업데이트
 - `VISION.md` — "카테고리 창출" 서사 재작성
 - ADR-006 — "유저 비용 $0" 조항 추가
 - ADR-008 (신규) — Evolution 엔진 알고리즘 상세

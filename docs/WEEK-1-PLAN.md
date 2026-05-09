@@ -19,9 +19,6 @@ pnpm dev                       # apps/web localhost:5173
 pnpm --filter=./apps/runtime dev   # localhost:8787
 ```
 
-**Claude Code 세션 시작 멘트 템플릿**:
-> "Week 1 Day N 작업. `docs/WEEK-1-PLAN.md` 의 Day N 체크리스트 기준으로 진행해줘. CLAUDE.md 규칙 준수."
-
 ---
 
 ## 📅 Day 1 (월) — 디자인 토큰 + shadcn 재스타일
@@ -259,26 +256,11 @@ test(web): canvas reload retains node positions
 
 ---
 
-## 🤖 Claude Code 작업 지시 템플릿
-
-매일 아침 Claude Code 열고 이렇게 지시:
-
-```
-오늘은 Week 1 Day N.
-- docs/WEEK-1-PLAN.md Day N 섹션 읽어줘
-- CLAUDE.md 규칙 준수
-- 디자인 토큰만 사용 (raw hex 금지)
-- TypeScript strict 0 에러 유지
-
-오전 체크리스트부터 하나씩 진행. 진행하면서 Day N Exit Criteria 충족 확인.
-```
-
 ## 📌 막혔을 때
 
 1. **5분 안에 안 풀리면** — `docs/` 관련 문서 재확인
 2. **아키텍처 의문** — `docs/decisions/` ADR 탐색
 3. **디자인 의문** — `specs/design-system.md` 또는 `example/design/` HTML 열기
-4. **Claude Code에 `/ultrathink`** — 깊이 생각 요청
-5. **GitHub issue로 자문자답** — 해결되면 PR로 닫기
+4. **GitHub issue로 자문자답** — 해결되면 PR로 닫기
 
 Good luck. 🧵
