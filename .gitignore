@@ -53,5 +53,13 @@ playwright/.cache/
 # TS build info
 **/tsconfig.tsbuildinfo
 
-# Claude Code session state
+# IDE / agent tool session state
 .claude/
+.cursor/
+.aider*
+.continue/
+CLAUDE.md
+AGENTS.md
+
+# React Router 7 generated types
+.react-router/
